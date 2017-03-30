@@ -413,6 +413,13 @@ var (
 		Usage: "Suggested gas price base correction factor (%)",
 		Value: 110,
 	}
+
+	//light node setting
+	BlockCount = cli.IntFlag{
+		Name: "blockcount",
+		Usage: "How much blocks keep in storage",
+		Value: 100,
+	}
 )
 
 // MakeDataDir retrieves the currently requested data directory, terminating
