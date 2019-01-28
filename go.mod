@@ -30,12 +30,19 @@ require (
 	github.com/holiman/uint256 v1.1.1
 	github.com/huin/goupnp v1.0.1-0.20200620063722-49508fba0031
 	github.com/influxdata/influxdb v1.8.3
+	github.com/ipfs/go-cid v0.0.7
+	github.com/ipfs/go-ipfs-blockstore v1.0.1
+	github.com/ipfs/go-ipfs-ds-help v1.0.0
+	github.com/ipfs/go-ipld-format v0.2.0
 	github.com/jackpal/go-nat-pmp v1.0.2-0.20160603034137-1fa385a6f458
 	github.com/jedisct1/go-minisign v0.0.0-20190909160543-45766022959e
+	github.com/jmoiron/sqlx v1.2.0
 	github.com/julienschmidt/httprouter v1.2.0
 	github.com/karalabe/usb v0.0.0-20190919080040-51dc0efba356
-	github.com/mattn/go-colorable v0.1.0
-	github.com/mattn/go-isatty v0.0.5-0.20180830101745-3fb116b82035
+	github.com/lib/pq v1.8.0
+	github.com/mattn/go-colorable v0.1.1
+	github.com/mattn/go-isatty v0.0.5
+	github.com/multiformats/go-multihash v0.0.14
 	github.com/naoina/toml v0.1.2-0.20170918210437-9fafd6967416
 	github.com/olekukonko/tablewriter v0.0.2-0.20190409134802-7e037d187b0c
 	github.com/peterh/liner v1.1.1-0.20190123174540-a2c9a5303de7
