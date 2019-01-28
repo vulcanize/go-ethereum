@@ -145,6 +145,9 @@ func makeConfigNode(ctx *cli.Context) (*node.Node, gethConfig) {
 		cfg.Ethstats.URL = ctx.GlobalString(utils.EthStatsURLFlag.Name)
 	}
 	utils.SetShhConfig(ctx, stack)
+	if ctx.GlobalBool(utils.StateDiffFlag.Name) {
+		cfg.Eth.Diffing = true
+	}
 
 	return stack, cfg
 }
@@ -165,6 +168,26 @@ func makeFullNode(ctx *cli.Context) (*node.Node, ethapi.Backend) {
 	backend := utils.RegisterEthService(stack, &cfg.Eth)
 
 	checkWhisper(ctx)
+
+	if ctx.GlobalBool(utils.StateDiffFlag.Name) {
+		var dbParams *[3]string
+		if ctx.GlobalIsSet(utils.StateDiffDBFlag.Name) {
+			dbParams = new([3]string)
+			dbParams[0] = ctx.GlobalString(utils.StateDiffDBFlag.Name)
+			if ctx.GlobalIsSet(utils.StateDiffDBNodeIDFlag.Name) {
+				dbParams[1] = ctx.GlobalString(utils.StateDiffDBNodeIDFlag.Name)
+			} else {
+				utils.Fatalf("Must specify node ID for statediff DB output")
+			}
+			if ctx.GlobalIsSet(utils.StateDiffDBClientNameFlag.Name) {
+				dbParams[2] = ctx.GlobalString(utils.StateDiffDBClientNameFlag.Name)
+			} else {
+				utils.Fatalf("Must specify client name for statediff DB output")
+			}
+		}
+		utils.RegisterStateDiffService(stack, dbParams, ctx.GlobalBool(utils.StateDiffWritingFlag.Name))
+	}
+
 	// Configure GraphQL if requested
 	if ctx.GlobalIsSet(utils.GraphQLEnabledFlag.Name) {
 		utils.RegisterGraphQLService(stack, backend, cfg.Node)
