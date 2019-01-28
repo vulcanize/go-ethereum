@@ -236,6 +236,17 @@ var AppHelpFlagGroups = []flags.FlagGroup{
 		}, debug.DeprecatedFlags...),
 	},
 	{
+		Name: "STATE DIFF",
+		Flags: []cli.Flag{
+			utils.StateDiffFlag,
+			utils.StateDiffDBFlag,
+			utils.StateDiffDBNodeIDFlag,
+			utils.StateDiffDBClientNameFlag,
+			utils.StateDiffWritingFlag,
+			utils.StateDiffWorkersFlag,
+		},
+	},
+	{
 		Name: "MISC",
 		Flags: []cli.Flag{
 			utils.SnapshotFlag,
