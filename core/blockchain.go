@@ -111,6 +111,7 @@ type CacheConfig struct {
 	TrieDirtyLimit      int           // Memory limit (MB) at which to start flushing dirty trie nodes to disk
 	TrieDirtyDisabled   bool          // Whether to disable trie write caching and GC altogether (archive node)
 	TrieTimeLimit       time.Duration // Time limit after which to flush the current in-memory trie to disk
+	ProcessingStateDiffs bool          // Whether statediffs processing should be taken into a account before a trie is pruned
 }
 
 // BlockChain represents the canonical chain given a database with a genesis
@@ -172,6 +173,8 @@ type BlockChain struct {
 	badBlocks       *lru.Cache                     // Bad block cache
 	shouldPreserve  func(*types.Block) bool        // Function used to determine whether should preserve the given block.
 	terminateInsert func(common.Hash, uint64) bool // Testing hook used to terminate ancient receipt chain insertion.
+
+	stateDiffsProcessed map[common.Hash]int
 }
 
 // NewBlockChain returns a fully initialised block chain using information
@@ -191,23 +194,24 @@ func NewBlockChain(db ethdb.Database, cacheConfig *CacheConfig, chainConfig *par
 	blockCache, _ := lru.New(blockCacheLimit)
 	futureBlocks, _ := lru.New(maxFutureBlocks)
 	badBlocks, _ := lru.New(badBlockLimit)
-
+	stateDiffsProcessed := make(map[common.Hash]int)
 	bc := &BlockChain{
-		chainConfig:    chainConfig,
-		cacheConfig:    cacheConfig,
-		db:             db,
-		triegc:         prque.New(nil),
-		stateCache:     state.NewDatabaseWithCache(db, cacheConfig.TrieCleanLimit),
-		quit:           make(chan struct{}),
-		shouldPreserve: shouldPreserve,
-		bodyCache:      bodyCache,
-		bodyRLPCache:   bodyRLPCache,
-		receiptsCache:  receiptsCache,
-		blockCache:     blockCache,
-		futureBlocks:   futureBlocks,
-		engine:         engine,
-		vmConfig:       vmConfig,
-		badBlocks:      badBlocks,
+		chainConfig:         chainConfig,
+		cacheConfig:         cacheConfig,
+		db:                  db,
+		triegc:              prque.New(nil),
+		stateCache:          state.NewDatabaseWithCache(db, cacheConfig.TrieCleanLimit),
+		quit:                make(chan struct{}),
+		shouldPreserve:      shouldPreserve,
+		bodyCache:           bodyCache,
+		bodyRLPCache:        bodyRLPCache,
+		receiptsCache:       receiptsCache,
+		blockCache:          blockCache,
+		futureBlocks:        futureBlocks,
+		engine:              engine,
+		vmConfig:            vmConfig,
+		badBlocks:           badBlocks,
+		stateDiffsProcessed: stateDiffsProcessed,
 	}
 	bc.validator = NewBlockValidator(chainConfig, bc, engine)
 	bc.prefetcher = newStatePrefetcher(chainConfig, bc, engine)
@@ -1243,6 +1247,11 @@ func (bc *BlockChain) writeKnownBlock(block *types.Block) error {
 	return nil
 }
 
+func (bc *BlockChain) AddToStateDiffProcessedCollection(hash common.Hash) {
+	count := bc.stateDiffsProcessed[hash]
+	bc.stateDiffsProcessed[hash] = count + 1
+}
+
 // WriteBlockWithState writes the block and all associated state to the database.
 func (bc *BlockChain) WriteBlockWithState(block *types.Block, receipts []*types.Receipt, state *state.StateDB) (status WriteStatus, err error) {
 	bc.chainmu.Lock()
@@ -1327,6 +1336,16 @@ func (bc *BlockChain) writeBlockWithState(block *types.Block, receipts []*types.
 					bc.triegc.Push(root, number)
 					break
 				}
+
+				if bc.cacheConfig.ProcessingStateDiffs {
+					if !bc.allowedRootToBeDereferenced(root.(common.Hash)) {
+						bc.triegc.Push(root, number)
+						break
+					} else {
+						delete(bc.stateDiffsProcessed, root.(common.Hash))
+					}
+				}
+
 				triedb.Dereference(root.(common.Hash))
 			}
 		}
@@ -1379,6 +1398,15 @@ func (bc *BlockChain) writeBlockWithState(block *types.Block, receipts []*types.
 	}
 	bc.futureBlocks.Remove(block.Hash())
 	return status, nil
+}
+
+// since we need the state tries of the current block and its parent in-memory
+// in order to process statediffs, we should avoid dereferencing roots until
+// its statediff and its child have been processed
+func (bc *BlockChain) allowedRootToBeDereferenced(root common.Hash) bool {
+	diffProcessedForSelfAndChildCount := 2
+	count := bc.stateDiffsProcessed[root]
+	return count >= diffProcessedForSelfAndChildCount
 }
 
 // addFutureBlock checks if the block is within the max allowed window to get
