@@ -2227,8 +2227,8 @@ func BenchmarkBlockChain_1x1000ValueTransferToExisting(b *testing.B) {
 
 func BenchmarkBlockChain_1x1000Executions(b *testing.B) {
 	var (
-		numTxs    = 1000
-		numBlocks = 1
+		numTxs= 1000
+		numBlocks= 1
 	)
 	b.StopTimer()
 	b.ResetTimer()
@@ -2298,17 +2298,17 @@ func TestSideImportPrunedBlocks(t *testing.T) {
 // first, but the journal wiped the entire state object on create-revert.
 func TestDeleteCreateRevert(t *testing.T) {
 	var (
-		aa = common.HexToAddress("0x000000000000000000000000000000000000aaaa")
-		bb = common.HexToAddress("0x000000000000000000000000000000000000bbbb")
+		aa= common.HexToAddress("0x000000000000000000000000000000000000aaaa")
+		bb= common.HexToAddress("0x000000000000000000000000000000000000bbbb")
 		// Generate a canonical chain to act as the main dataset
-		engine = ethash.NewFaker()
-		db     = rawdb.NewMemoryDatabase()
+		engine= ethash.NewFaker()
+		db= rawdb.NewMemoryDatabase()
 
 		// A sender who makes transactions, has some funds
-		key, _  = crypto.HexToECDSA("b71c71a67e1177ad4e901695e1b4b9ee17ae16c6668d313eac2f96dbcda3f291")
-		address = crypto.PubkeyToAddress(key.PublicKey)
-		funds   = big.NewInt(1000000000)
-		gspec   = &Genesis{
+		key, _= crypto.HexToECDSA("b71c71a67e1177ad4e901695e1b4b9ee17ae16c6668d313eac2f96dbcda3f291")
+		address= crypto.PubkeyToAddress(key.PublicKey)
+		funds= big.NewInt(1000000000)
+		gspec= &Genesis{
 			Config: params.TestChainConfig,
 			Alloc: GenesisAlloc{
 				address: {Balance: funds},
@@ -2322,11 +2322,11 @@ func TestDeleteCreateRevert(t *testing.T) {
 				// The address 0xBBBB send 1 wei to 0xAAAA, then reverts
 				bb: {
 					Code: []byte{
-						byte(vm.PC),          // [0]
-						byte(vm.DUP1),        // [0,0]
-						byte(vm.DUP1),        // [0,0,0]
-						byte(vm.DUP1),        // [0,0,0,0]
-						byte(vm.PUSH1), 0x01, // [0,0,0,0,1] (value)
+						byte(vm.PC),                // [0]
+						byte(vm.DUP1),              // [0,0]
+						byte(vm.DUP1),              // [0,0,0]
+						byte(vm.DUP1),              // [0,0,0,0]
+						byte(vm.PUSH1), 0x01,       // [0,0,0,0,1] (value)
 						byte(vm.PUSH2), 0xaa, 0xaa, // [0,0,0,0,1, 0xaaaa]
 						byte(vm.GAS),
 						byte(vm.CALL),
@@ -2336,7 +2336,7 @@ func TestDeleteCreateRevert(t *testing.T) {
 				},
 			},
 		}
-		genesis = gspec.MustCommit(db)
+		genesis= gspec.MustCommit(db)
 	)
 
 	blocks, _ := GenerateChain(params.TestChainConfig, genesis, engine, db, 1, func(i int, b *BlockGen) {
@@ -2361,4 +2361,85 @@ func TestDeleteCreateRevert(t *testing.T) {
 	if n, err := chain.InsertChain(blocks); err != nil {
 		t.Fatalf("block %d: failed to insert into chain: %v", n, err)
 	}
+}
+
+func TestProcessingStateDiffs(t *testing.T) {
+	defaultTrieCleanCache := 256
+	defaultTrieDirtyCache := 256
+	defaultTrieTimeout := 60 * time.Minute
+	cacheConfig := &CacheConfig{
+		TrieDirtyDisabled:    false,
+		TrieCleanLimit:       defaultTrieCleanCache,
+		TrieDirtyLimit:       defaultTrieDirtyCache,
+		TrieTimeLimit:        defaultTrieTimeout,
+		ProcessingStateDiffs: true,
+	}
+	db := rawdb.NewMemoryDatabase()
+	genesis := new(Genesis).MustCommit(db)
+	numberOfBlocks := TriesInMemory
+	engine := ethash.NewFaker()
+	blockchain, _ := NewBlockChain(db, cacheConfig, params.AllEthashProtocolChanges, engine, vm.Config{}, nil)
+	blocks := makeBlockChain(genesis, numberOfBlocks+1, engine, db, canonicalSeed)
+	_, err := blockchain.InsertChain(blocks)
+	if err != nil {
+		t.Fatalf("failed to create pristine chain: %v", err)
+	}
+	defer blockchain.Stop()
+
+	//when adding a root hash to the collection, it will increment the count
+	firstStateRoot := blocks[0].Root()
+	blockchain.AddToStateDiffProcessedCollection(firstStateRoot)
+	value, ok := blockchain.stateDiffsProcessed[firstStateRoot]
+	if !ok {
+		t.Error("state root not found in collection")
+	}
+	if value != 1 {
+		t.Error("state root count not correct", "want", 1, "got", value)
+	}
+
+	blockchain.AddToStateDiffProcessedCollection(firstStateRoot)
+	value, ok = blockchain.stateDiffsProcessed[firstStateRoot]
+	if !ok {
+		t.Error("state root not found in collection")
+	}
+	if value != 2 {
+		t.Error("state root count not correct", "want", 2, "got", value)
+	}
+
+	moreBlocks := makeBlockChain(blocks[len(blocks)-1], 1, engine, db, canonicalSeed)
+	_, err = blockchain.InsertChain(moreBlocks)
+
+	//a root hash can be dereferenced when it's state diff and it's child's state diff have been processed
+	//(i.e. it has a count of 2 in stateDiffsProcessed)
+	nodes := blockchain.stateCache.TrieDB().Nodes()
+	if containsRootHash(nodes, firstStateRoot) {
+		t.Errorf("stateRoot %s in nodes, want: %t, got: %t", firstStateRoot.Hex(), false, true)
+	}
+
+	//a root hash should still be in the in-mem db if it's child's state diff hasn't yet been processed
+	//(i.e. it has a count of 1 stateDiffsProcessed)
+	secondStateRoot := blocks[1].Root()
+	blockchain.AddToStateDiffProcessedCollection(secondStateRoot)
+	if !containsRootHash(nodes, secondStateRoot) {
+		t.Errorf("stateRoot %s in nodes, want: %t, got: %t", secondStateRoot.Hex(), true, false)
+	}
+
+	//the stateDiffsProcessed collection is cleaned up once a hash has been dereferenced
+	_, ok = blockchain.stateDiffsProcessed[firstStateRoot]
+	if ok {
+		t.Errorf("stateRoot %s in stateDiffsProcessed collection, want: %t, got: %t",
+			firstStateRoot.Hex(),
+			false,
+			ok,
+		)
+	}
+}
+
+func containsRootHash(collection []common.Hash, hash common.Hash) bool {
+	for _, n := range collection {
+		if n == hash {
+			return true
+		}
+	}
+	return false
 }
