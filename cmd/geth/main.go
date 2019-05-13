@@ -148,6 +148,8 @@ var (
 		utils.EWASMInterpreterFlag,
 		utils.EVMInterpreterFlag,
 		utils.StateDiffFlag,
+		utils.StateDiffPathsAndProofs,
+		utils.StateDiffLeafNodesOnly,
 		configFileFlag,
 	}
 
