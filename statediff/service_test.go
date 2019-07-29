@@ -131,27 +131,27 @@ func testErrorInChainEventLoop(t *testing.T) {
 	for i, payload := range payloads {
 		if !bytes.Equal(payload.ReceiptsRlp, expectedReceiptsRlp[i]) {
 			t.Error("Test failure:", t.Name())
-			t.Logf("Actual reeipt rlp for payload %d does not equal expected.\nactual: %+v\nexpected: %+v", i, payload.ReceiptsRlp, expectedReceiptsRlp[i])
+			t.Logf("Actual receipt rlp for payload %d does not equal expected.\nactual: %+v\nexpected: %+v", i, payload.ReceiptsRlp, expectedReceiptsRlp[i])
 		}
 	}
 
 	if !reflect.DeepEqual(builder.BlockHash, testBlock2.Hash()) {
 		t.Error("Test failure:", t.Name())
-		t.Logf("Actual does not equal expected.\nactual:%+v\nexpected: %+v", builder.BlockHash, testBlock2.Hash())
+		t.Logf("Actual blockhash does not equal expected.\nactual:%+v\nexpected: %+v", builder.BlockHash, testBlock2.Hash())
 	}
 	if !bytes.Equal(builder.OldStateRoot.Bytes(), parentBlock2.Root().Bytes()) {
 		t.Error("Test failure:", t.Name())
-		t.Logf("Actual does not equal expected.\nactual:%+v\nexpected: %+v", builder.OldStateRoot, parentBlock2.Root())
+		t.Logf("Actual root does not equal expected.\nactual:%+v\nexpected: %+v", builder.OldStateRoot, parentBlock2.Root())
 	}
 	if !bytes.Equal(builder.NewStateRoot.Bytes(), testBlock2.Root().Bytes()) {
 		t.Error("Test failure:", t.Name())
-		t.Logf("Actual does not equal expected.\nactual:%+v\nexpected: %+v", builder.NewStateRoot, testBlock2.Root())
+		t.Logf("Actual root does not equal expected.\nactual:%+v\nexpected: %+v", builder.NewStateRoot, testBlock2.Root())
 	}
 	//look up the parent block from its hash
 	expectedHashes := []common.Hash{testBlock1.ParentHash(), testBlock2.ParentHash()}
 	if !reflect.DeepEqual(blockChain.ParentHashesLookedUp, expectedHashes) {
 		t.Error("Test failure:", t.Name())
-		t.Logf("Actual does not equal expected.\nactual:%+v\nexpected: %+v", blockChain.ParentHashesLookedUp, expectedHashes)
+		t.Logf("Actual parent hash does not equal expected.\nactual:%+v\nexpected: %+v", blockChain.ParentHashesLookedUp, expectedHashes)
 	}
 }
 

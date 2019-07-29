@@ -176,7 +176,7 @@ func (sds *Service) processStateDiff(currentBlock, parentBlock *types.Block) err
 		payload.ReceiptsRlp = receiptBuff.Bytes()
 	}
 
-	// If we have any websocket subscriptions listening in, send the data to them
+	// If we have any rpc subscriptions listening in, send the data to them
 	sds.send(payload)
 	return nil
 }

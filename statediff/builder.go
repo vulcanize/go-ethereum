@@ -25,7 +25,6 @@ import (
 	"math/big"
 
 	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/core"
 	"github.com/ethereum/go-ethereum/core/state"
 	"github.com/ethereum/go-ethereum/crypto"
@@ -317,16 +316,4 @@ func (sdb *builder) buildStorageDiffsFromTrie(it trie.NodeIterator) ([]StorageDi
 	}
 
 	return storageDiffs, nil
-}
-
-func (sdb *builder) addressByPath(path []byte) (*common.Address, error) {
-	log.Debug("Looking up address from path", "path", hexutil.Encode(append([]byte("secure-key-"), path...)))
-	addrBytes, err := sdb.chainDB.Get(append([]byte("secure-key-"), hexToKeyBytes(path)...))
-	if err != nil {
-		log.Error("Error looking up address via path", "path", hexutil.Encode(append([]byte("secure-key-"), path...)), "error", err)
-		return nil, err
-	}
-	addr := common.BytesToAddress(addrBytes)
-	log.Debug("Address found", "Address", addr)
-	return &addr, nil
 }
