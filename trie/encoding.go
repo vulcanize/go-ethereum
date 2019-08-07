@@ -66,6 +66,7 @@ func compactToHex(compact []byte) []byte {
 }
 
 func keybytesToHex(str []byte) []byte {
+
 	l := len(str)*2 + 1
 	var nibbles = make([]byte, l)
 	for i, b := range str {

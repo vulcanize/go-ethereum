@@ -279,10 +279,16 @@ func (sdb *builder) buildStorageDiffsFromTrie(it trie.NodeIterator) ([]StorageDi
 		log.Debug("Iterating over state at path ", "path", pathToStr(it))
 		if it.Leaf() {
 			log.Debug("Found leaf in storage", "path", pathToStr(it))
+
+
 			leafKey := make([]byte, len(it.LeafKey()))
 			copy(leafKey, it.LeafKey())
 			leafValue := make([]byte, len(it.LeafBlob()))
 			copy(leafValue, it.LeafBlob())
+
+			log.Info("============iterator path (pathToStr(it)=============", "path", pathToStr(it))
+			log.Info("============leafKey=============", "leafKey", leafKey, "leafKey.Hex()", common.Bytes2Hex(leafKey))
+
 			sd := StorageDiff{
 				Leaf:  true,
 				Key:   leafKey,

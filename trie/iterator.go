@@ -20,6 +20,7 @@ import (
 	"bytes"
 	"container/heap"
 	"errors"
+	"github.com/ethereum/go-ethereum/log"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/rlp"
@@ -160,8 +161,11 @@ func (it *nodeIterator) Leaf() bool {
 }
 
 func (it *nodeIterator) LeafKey() []byte {
+
 	if len(it.stack) > 0 {
 		if _, ok := it.stack[len(it.stack)-1].node.(valueNode); ok {
+			log.Info("=================in LeafKey()=============", "common.BytesToHex(path)", common.Bytes2Hex(it.path), "it.Hash()", it.Hash().Hex())
+			log.Info("====also in LeafKey====", "keybytesToHex(it.path)", common.Bytes2Hex(keybytesToHex(it.path)))
 			return hexToKeyBytes(it.path)
 		}
 	}
