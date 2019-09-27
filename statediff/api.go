@@ -89,3 +89,8 @@ func (api *PublicStateDiffAPI) Stream(ctx context.Context) (*rpc.Subscription, e
 
 	return rpcSub, nil
 }
+
+// StateDiffAt returns a statediff payload at the specific blockheight
+func (api *PublicStateDiffAPI) StateDiffAt(ctx context.Context, blockNumber uint64) (*Payload, error) {
+	return api.sds.StateDiffAt(blockNumber)
+}

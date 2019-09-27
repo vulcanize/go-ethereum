@@ -185,3 +185,8 @@ func (sds *MockStateDiffService) Stop() error {
 	close(sds.QuitChan)
 	return nil
 }
+
+// StateDiffAt mock method
+func (sds *MockStateDiffService) StateDiffAt(blockNumber uint64) (*statediff.Payload, error) {
+	panic("implement me")
+}

@@ -194,3 +194,75 @@ func testErrorInBlockLoop(t *testing.T) {
 		t.Logf("Actual does not equal expected.\nactual:%+v\nexpected: %+v", builder.NewStateRoot, testBlock1.Root())
 	}
 }
+
+func TestGetStateDiffAt(t *testing.T) {
+	testErrorInStateDiffAt(t)
+}
+
+func testErrorInStateDiffAt(t *testing.T) {
+	mockStateDiff := statediff.StateDiff{
+		BlockNumber: testBlock1.Number(),
+		BlockHash:   testBlock1.Hash(),
+	}
+	expectedStateDiffRlp, err := rlp.EncodeToBytes(mockStateDiff)
+	if err != nil {
+		t.Error(err)
+	}
+	expectedReceiptsRlp, err := rlp.EncodeToBytes(testReceipts1)
+	if err != nil {
+		t.Error(err)
+	}
+	expectedBlockRlp, err := rlp.EncodeToBytes(testBlock1)
+	if err != nil {
+		t.Error(err)
+	}
+	expectedStateDiffPayload := statediff.Payload{
+		StateDiffRlp: expectedStateDiffRlp,
+		ReceiptsRlp:  expectedReceiptsRlp,
+		BlockRlp:     expectedBlockRlp,
+	}
+	expectedStateDiffPayloadRlp, err := rlp.EncodeToBytes(expectedStateDiffPayload)
+	if err != nil {
+		t.Error(err)
+	}
+	builder := mocks.Builder{}
+	builder.SetStateDiffToBuild(mockStateDiff)
+	blockChain := mocks.BlockChain{}
+	blockMapping := make(map[common.Hash]*types.Block)
+	blockMapping[parentBlock1.Hash()] = parentBlock1
+	blockChain.SetParentBlocksToReturn(blockMapping)
+	blockChain.SetBlockForNumber(testBlock1, testBlock1.NumberU64())
+	blockChain.SetReceiptsForHash(testBlock1.Hash(), testReceipts1)
+	service := statediff.Service{
+		Mutex:         sync.Mutex{},
+		Builder:       &builder,
+		BlockChain:    &blockChain,
+		QuitChan:      make(chan bool),
+		Subscriptions: make(map[rpc.ID]statediff.Subscription),
+		StreamBlock:   true,
+	}
+	stateDiffPayload, err := service.StateDiffAt(testBlock1.NumberU64())
+	if err != nil {
+		t.Error(err)
+	}
+	stateDiffPayloadRlp, err := rlp.EncodeToBytes(stateDiffPayload)
+	if err != nil {
+		t.Error(err)
+	}
+	if !bytes.Equal(builder.BlockHash.Bytes(), testBlock1.Hash().Bytes()) {
+		t.Error("Test failure:", t.Name())
+		t.Logf("Actual does not equal expected.\nactual:%+v\nexpected: %+v", builder.BlockHash, testBlock1.Hash())
+	}
+	if !bytes.Equal(builder.OldStateRoot.Bytes(), parentBlock1.Root().Bytes()) {
+		t.Error("Test failure:", t.Name())
+		t.Logf("Actual does not equal expected.\nactual:%+v\nexpected: %+v", builder.OldStateRoot, parentBlock1.Root())
+	}
+	if !bytes.Equal(builder.NewStateRoot.Bytes(), testBlock1.Root().Bytes()) {
+		t.Error("Test failure:", t.Name())
+		t.Logf("Actual does not equal expected.\nactual:%+v\nexpected: %+v", builder.NewStateRoot, testBlock1.Root())
+	}
+	if !bytes.Equal(expectedStateDiffPayloadRlp, stateDiffPayloadRlp) {
+		t.Error("Test failure:", t.Name())
+		t.Logf("Actual does not equal expected.\nactual:%+v\nexpected: %+v", expectedStateDiffPayload, stateDiffPayload)
+	}
+}

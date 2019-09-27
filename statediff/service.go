@@ -39,6 +39,7 @@ const chainEventChanSize = 20000
 type blockChain interface {
 	SubscribeChainEvent(ch chan<- core.ChainEvent) event.Subscription
 	GetBlockByHash(hash common.Hash) *types.Block
+	GetBlockByNumber(number uint64) *types.Block
 	AddToStateDiffProcessedCollection(hash common.Hash)
 	GetReceiptsByHash(hash common.Hash) types.Receipts
 }
@@ -53,6 +54,8 @@ type IService interface {
 	Subscribe(id rpc.ID, sub chan<- Payload, quitChan chan<- bool)
 	// Method to unsubscribe from state diff processing
 	Unsubscribe(id rpc.ID) error
+	// Method to get statediff at specific block
+	StateDiffAt(blockNumber uint64) (*Payload, error)
 }
 
 // Service is the underlying struct for the state diffing service
@@ -132,9 +135,11 @@ func (sds *Service) Loop(chainEventCh chan core.ChainEvent) {
 				log.Error(fmt.Sprintf("Parent block is nil, skipping this block (%d)", currentBlock.Number()))
 				continue
 			}
-			if err := sds.processStateDiff(currentBlock, parentBlock); err != nil {
+			payload, err := sds.processStateDiff(currentBlock, parentBlock)
+			if err != nil {
 				log.Error(fmt.Sprintf("Error building statediff for block %d; error: ", currentBlock.Number()) + err.Error())
 			}
+			sds.send(*payload)
 		case err := <-errCh:
 			log.Warn("Error from chain event subscription, breaking loop", "error", err)
 			sds.close()
@@ -148,14 +153,14 @@ func (sds *Service) Loop(chainEventCh chan core.ChainEvent) {
 }
 
 // processStateDiff method builds the state diff payload from the current and parent block before sending it to listening subscriptions
-func (sds *Service) processStateDiff(currentBlock, parentBlock *types.Block) error {
+func (sds *Service) processStateDiff(currentBlock, parentBlock *types.Block) (*Payload, error) {
 	stateDiff, err := sds.Builder.BuildStateDiff(parentBlock.Root(), currentBlock.Root(), currentBlock.Number(), currentBlock.Hash())
 	if err != nil {
-		return err
+		return nil, err
 	}
 	stateDiffRlp, err := rlp.EncodeToBytes(stateDiff)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	payload := Payload{
 		StateDiffRlp: stateDiffRlp,
@@ -163,19 +168,17 @@ func (sds *Service) processStateDiff(currentBlock, parentBlock *types.Block) err
 	if sds.StreamBlock {
 		blockBuff := new(bytes.Buffer)
 		if err = currentBlock.EncodeRLP(blockBuff); err != nil {
-			return err
+			return nil, err
 		}
 		payload.BlockRlp = blockBuff.Bytes()
 		receiptBuff := new(bytes.Buffer)
 		receipts := sds.BlockChain.GetReceiptsByHash(currentBlock.Hash())
 		if err = rlp.Encode(receiptBuff, receipts); err != nil {
-			return err
+			return nil, err
 		}
 		payload.ReceiptsRlp = receiptBuff.Bytes()
 	}
-
-	sds.send(payload)
-	return nil
+	return &payload, nil
 }
 
 // Subscribe is used by the API to subscribe to the service loop
@@ -268,4 +271,13 @@ func (sds *Service) close() {
 		delete(sds.Subscriptions, id)
 	}
 	sds.Unlock()
+}
+
+// StateDiffAt returns a statediff payload at the specific blockheight
+// This operation cannot be performed back past the point of db pruning; it requires an archival node
+func (sds *Service) StateDiffAt(blockNumber uint64) (*Payload, error) {
+	currentBlock := sds.BlockChain.GetBlockByNumber(blockNumber)
+	parentBlock := sds.BlockChain.GetBlockByHash(currentBlock.ParentHash())
+	log.Info(fmt.Sprintf("sending state diff at %d", blockNumber))
+	return sds.processStateDiff(currentBlock, parentBlock)
 }

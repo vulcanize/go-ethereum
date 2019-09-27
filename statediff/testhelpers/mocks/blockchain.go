@@ -29,11 +29,12 @@ import (
 
 // BlockChain is a mock blockchain for testing
 type BlockChain struct {
-	ParentHashesLookedUp []common.Hash
-	parentBlocksToReturn map[common.Hash]*types.Block
-	callCount            int
-	ChainEvents          []core.ChainEvent
-	Receipts             map[common.Hash]types.Receipts
+	ParentHashesLookedUp         []common.Hash
+	parentBlocksToReturn         map[common.Hash]*types.Block
+	parentBlocksToReturnByNumber map[uint64]*types.Block
+	callCount                    int
+	ChainEvents                  []core.ChainEvent
+	Receipts                     map[common.Hash]types.Receipts
 }
 
 // AddToStateDiffProcessedCollection mock method
@@ -99,4 +100,17 @@ func (blockChain *BlockChain) SetReceiptsForHash(hash common.Hash, receipts type
 // GetReceiptsByHash mock method
 func (blockChain *BlockChain) GetReceiptsByHash(hash common.Hash) types.Receipts {
 	return blockChain.Receipts[hash]
+}
+
+// SetBlockForNumber mock method
+func (blockChain *BlockChain) SetBlockForNumber(block *types.Block, number uint64) {
+	if blockChain.parentBlocksToReturnByNumber == nil {
+		blockChain.parentBlocksToReturnByNumber = make(map[uint64]*types.Block)
+	}
+	blockChain.parentBlocksToReturnByNumber[number] = block
+}
+
+// GetBlockByNumber mock method
+func (blockChain *BlockChain) GetBlockByNumber(number uint64) *types.Block {
+	return blockChain.parentBlocksToReturnByNumber[number]
 }
