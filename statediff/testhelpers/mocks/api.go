@@ -36,6 +36,7 @@ import (
 type MockStateDiffService struct {
 	sync.Mutex
 	Builder         statediff.Builder
+	BlockChain      *BlockChain
 	ReturnProtocol  []p2p.Protocol
 	ReturnAPIs      []rpc.API
 	BlockChan       chan *types.Block
@@ -77,10 +78,12 @@ func (sds *MockStateDiffService) Loop(chan core.ChainEvent) {
 					"current block number", currentBlock.Number())
 				continue
 			}
-			if err := sds.process(currentBlock, parentBlock); err != nil {
-				println(err.Error())
+			payload, err := sds.processStateDiff(currentBlock, parentBlock)
+			if err != nil {
 				log.Error("Error building statediff", "block number", currentBlock.Number(), "error", err)
+				continue
 			}
+			sds.send(*payload)
 		case <-sds.QuitChan:
 			log.Debug("Quitting the statediff block channel")
 			sds.close()
@@ -89,16 +92,16 @@ func (sds *MockStateDiffService) Loop(chan core.ChainEvent) {
 	}
 }
 
-// process method builds the state diff payload from the current and parent block and streams it to listening subscriptions
-func (sds *MockStateDiffService) process(currentBlock, parentBlock *types.Block) error {
+// processStateDiff method builds the state diff payload from the current and parent block and streams it to listening subscriptions
+func (sds *MockStateDiffService) processStateDiff(currentBlock, parentBlock *types.Block) (*statediff.Payload, error) {
 	stateDiff, err := sds.Builder.BuildStateDiff(parentBlock.Root(), currentBlock.Root(), currentBlock.Number(), currentBlock.Hash())
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	stateDiffRlp, err := rlp.EncodeToBytes(stateDiff)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	payload := statediff.Payload{
 		StateDiffRlp: stateDiffRlp,
@@ -106,14 +109,11 @@ func (sds *MockStateDiffService) process(currentBlock, parentBlock *types.Block)
 	if sds.streamBlock {
 		rlpBuff := new(bytes.Buffer)
 		if err = currentBlock.EncodeRLP(rlpBuff); err != nil {
-			return err
+			return nil, err
 		}
 		payload.BlockRlp = rlpBuff.Bytes()
 	}
-
-	// If we have any websocket subscription listening in, send the data to them
-	sds.send(payload)
-	return nil
+	return &payload, nil
 }
 
 // Subscribe mock method
@@ -188,5 +188,8 @@ func (sds *MockStateDiffService) Stop() error {
 
 // StateDiffAt mock method
 func (sds *MockStateDiffService) StateDiffAt(blockNumber uint64) (*statediff.Payload, error) {
-	panic("implement me")
+	currentBlock := sds.BlockChain.GetBlockByNumber(blockNumber)
+	parentBlock := sds.BlockChain.GetBlockByHash(currentBlock.ParentHash())
+	log.Info(fmt.Sprintf("sending state diff at %d", blockNumber))
+	return sds.processStateDiff(currentBlock, parentBlock)
 }

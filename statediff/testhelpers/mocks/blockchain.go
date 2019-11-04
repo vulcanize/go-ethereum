@@ -29,35 +29,35 @@ import (
 
 // BlockChain is a mock blockchain for testing
 type BlockChain struct {
-	ParentHashesLookedUp         []common.Hash
-	parentBlocksToReturn         map[common.Hash]*types.Block
-	parentBlocksToReturnByNumber map[uint64]*types.Block
-	callCount                    int
-	ChainEvents                  []core.ChainEvent
-	Receipts                     map[common.Hash]types.Receipts
+	HashesLookedUp         []common.Hash
+	blocksToReturnByHash   map[common.Hash]*types.Block
+	blocksToReturnByNumber map[uint64]*types.Block
+	callCount              int
+	ChainEvents            []core.ChainEvent
+	Receipts               map[common.Hash]types.Receipts
 }
 
 // AddToStateDiffProcessedCollection mock method
 func (blockChain *BlockChain) AddToStateDiffProcessedCollection(hash common.Hash) {}
 
-// SetParentBlocksToReturn mock method
-func (blockChain *BlockChain) SetParentBlocksToReturn(blocks map[common.Hash]*types.Block) {
-	if blockChain.parentBlocksToReturn == nil {
-		blockChain.parentBlocksToReturn = make(map[common.Hash]*types.Block)
+// SetBlocksForHashes mock method
+func (blockChain *BlockChain) SetBlocksForHashes(blocks map[common.Hash]*types.Block) {
+	if blockChain.blocksToReturnByHash == nil {
+		blockChain.blocksToReturnByHash = make(map[common.Hash]*types.Block)
 	}
-	blockChain.parentBlocksToReturn = blocks
+	blockChain.blocksToReturnByHash = blocks
 }
 
 // GetBlockByHash mock method
 func (blockChain *BlockChain) GetBlockByHash(hash common.Hash) *types.Block {
-	blockChain.ParentHashesLookedUp = append(blockChain.ParentHashesLookedUp, hash)
+	blockChain.HashesLookedUp = append(blockChain.HashesLookedUp, hash)
 
-	var parentBlock *types.Block
-	if len(blockChain.parentBlocksToReturn) > 0 {
-		parentBlock = blockChain.parentBlocksToReturn[hash]
+	var block *types.Block
+	if len(blockChain.blocksToReturnByHash) > 0 {
+		block = blockChain.blocksToReturnByHash[hash]
 	}
 
-	return parentBlock
+	return block
 }
 
 // SetChainEvents mock method
@@ -67,7 +67,7 @@ func (blockChain *BlockChain) SetChainEvents(chainEvents []core.ChainEvent) {
 
 // SubscribeChainEvent mock method
 func (blockChain *BlockChain) SubscribeChainEvent(ch chan<- core.ChainEvent) event.Subscription {
-	subErr := errors.New("Subscription Error")
+	subErr := errors.New("subscription error")
 
 	var eventCounter int
 	subscription := event.NewSubscription(func(quit <-chan struct{}) error {
@@ -104,13 +104,13 @@ func (blockChain *BlockChain) GetReceiptsByHash(hash common.Hash) types.Receipts
 
 // SetBlockForNumber mock method
 func (blockChain *BlockChain) SetBlockForNumber(block *types.Block, number uint64) {
-	if blockChain.parentBlocksToReturnByNumber == nil {
-		blockChain.parentBlocksToReturnByNumber = make(map[uint64]*types.Block)
+	if blockChain.blocksToReturnByNumber == nil {
+		blockChain.blocksToReturnByNumber = make(map[uint64]*types.Block)
 	}
-	blockChain.parentBlocksToReturnByNumber[number] = block
+	blockChain.blocksToReturnByNumber[number] = block
 }
 
 // GetBlockByNumber mock method
 func (blockChain *BlockChain) GetBlockByNumber(number uint64) *types.Block {
-	return blockChain.parentBlocksToReturnByNumber[number]
+	return blockChain.blocksToReturnByNumber[number]
 }

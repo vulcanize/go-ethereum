@@ -93,7 +93,7 @@ func testErrorInChainEventLoop(t *testing.T) {
 	blockMapping := make(map[common.Hash]*types.Block)
 	blockMapping[parentBlock1.Hash()] = parentBlock1
 	blockMapping[parentBlock2.Hash()] = parentBlock2
-	blockChain.SetParentBlocksToReturn(blockMapping)
+	blockChain.SetBlocksForHashes(blockMapping)
 	blockChain.SetChainEvents([]core.ChainEvent{event1, event2, event3})
 	blockChain.SetReceiptsForHash(testBlock1.Hash(), testReceipts1)
 	blockChain.SetReceiptsForHash(testBlock2.Hash(), testReceipts2)
@@ -149,9 +149,9 @@ func testErrorInChainEventLoop(t *testing.T) {
 	}
 	//look up the parent block from its hash
 	expectedHashes := []common.Hash{testBlock1.ParentHash(), testBlock2.ParentHash()}
-	if !reflect.DeepEqual(blockChain.ParentHashesLookedUp, expectedHashes) {
+	if !reflect.DeepEqual(blockChain.HashesLookedUp, expectedHashes) {
 		t.Error("Test failure:", t.Name())
-		t.Logf("Actual parent hash does not equal expected.\nactual:%+v\nexpected: %+v", blockChain.ParentHashesLookedUp, expectedHashes)
+		t.Logf("Actual parent hash does not equal expected.\nactual:%+v\nexpected: %+v", blockChain.HashesLookedUp, expectedHashes)
 	}
 }
 
@@ -170,7 +170,7 @@ func testErrorInBlockLoop(t *testing.T) {
 	service.Subscribe(rpc.NewID(), payloadChan, quitChan)
 	blockMapping := make(map[common.Hash]*types.Block)
 	blockMapping[parentBlock1.Hash()] = parentBlock1
-	blockChain.SetParentBlocksToReturn(blockMapping)
+	blockChain.SetBlocksForHashes(blockMapping)
 	blockChain.SetChainEvents([]core.ChainEvent{event1, event2})
 	// Need to have listeners on the channels or the subscription will be closed and the processing halted
 	go func() {
@@ -230,7 +230,7 @@ func testErrorInStateDiffAt(t *testing.T) {
 	blockChain := mocks.BlockChain{}
 	blockMapping := make(map[common.Hash]*types.Block)
 	blockMapping[parentBlock1.Hash()] = parentBlock1
-	blockChain.SetParentBlocksToReturn(blockMapping)
+	blockChain.SetBlocksForHashes(blockMapping)
 	blockChain.SetBlockForNumber(testBlock1, testBlock1.NumberU64())
 	blockChain.SetReceiptsForHash(testBlock1.Hash(), testReceipts1)
 	service := statediff.Service{

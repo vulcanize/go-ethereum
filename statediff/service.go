@@ -138,6 +138,7 @@ func (sds *Service) Loop(chainEventCh chan core.ChainEvent) {
 			payload, err := sds.processStateDiff(currentBlock, parentBlock)
 			if err != nil {
 				log.Error(fmt.Sprintf("Error building statediff for block %d; error: ", currentBlock.Number()) + err.Error())
+				continue
 			}
 			sds.send(*payload)
 		case err := <-errCh:
