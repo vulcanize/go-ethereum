@@ -2298,17 +2298,17 @@ func TestSideImportPrunedBlocks(t *testing.T) {
 // first, but the journal wiped the entire state object on create-revert.
 func TestDeleteCreateRevert(t *testing.T) {
 	var (
-		aa= common.HexToAddress("0x000000000000000000000000000000000000aaaa")
-		bb= common.HexToAddress("0x000000000000000000000000000000000000bbbb")
+		aa = common.HexToAddress("0x000000000000000000000000000000000000aaaa")
+		bb = common.HexToAddress("0x000000000000000000000000000000000000bbbb")
 		// Generate a canonical chain to act as the main dataset
-		engine= ethash.NewFaker()
-		db= rawdb.NewMemoryDatabase()
+		engine = ethash.NewFaker()
+		db     = rawdb.NewMemoryDatabase()
 
 		// A sender who makes transactions, has some funds
-		key, _= crypto.HexToECDSA("b71c71a67e1177ad4e901695e1b4b9ee17ae16c6668d313eac2f96dbcda3f291")
-		address= crypto.PubkeyToAddress(key.PublicKey)
-		funds= big.NewInt(1000000000)
-		gspec= &Genesis{
+		key, _  = crypto.HexToECDSA("b71c71a67e1177ad4e901695e1b4b9ee17ae16c6668d313eac2f96dbcda3f291")
+		address = crypto.PubkeyToAddress(key.PublicKey)
+		funds   = big.NewInt(1000000000)
+		gspec   = &Genesis{
 			Config: params.TestChainConfig,
 			Alloc: GenesisAlloc{
 				address: {Balance: funds},
@@ -2322,11 +2322,11 @@ func TestDeleteCreateRevert(t *testing.T) {
 				// The address 0xBBBB send 1 wei to 0xAAAA, then reverts
 				bb: {
 					Code: []byte{
-						byte(vm.PC),                // [0]
-						byte(vm.DUP1),              // [0,0]
-						byte(vm.DUP1),              // [0,0,0]
-						byte(vm.DUP1),              // [0,0,0,0]
-						byte(vm.PUSH1), 0x01,       // [0,0,0,0,1] (value)
+						byte(vm.PC),          // [0]
+						byte(vm.DUP1),        // [0,0]
+						byte(vm.DUP1),        // [0,0,0]
+						byte(vm.DUP1),        // [0,0,0,0]
+						byte(vm.PUSH1), 0x01, // [0,0,0,0,1] (value)
 						byte(vm.PUSH2), 0xaa, 0xaa, // [0,0,0,0,1, 0xaaaa]
 						byte(vm.GAS),
 						byte(vm.CALL),
@@ -2336,7 +2336,7 @@ func TestDeleteCreateRevert(t *testing.T) {
 				},
 			},
 		}
-		genesis= gspec.MustCommit(db)
+		genesis = gspec.MustCommit(db)
 	)
 
 	blocks, _ := GenerateChain(params.TestChainConfig, genesis, engine, db, 1, func(i int, b *BlockGen) {

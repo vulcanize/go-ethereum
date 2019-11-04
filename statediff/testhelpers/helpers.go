@@ -34,10 +34,6 @@ import (
 // reassembly.
 func MakeChain(n int, parent *types.Block) ([]common.Hash, map[common.Hash]*types.Block, *core.BlockChain) {
 	blocks, _ := core.GenerateChain(params.TestChainConfig, parent, ethash.NewFaker(), Testdb, n, testChainGen)
-	headers := make([]*types.Header, len(blocks))
-	for i, block := range blocks {
-		headers[i] = block.Header()
-	}
 	chain, _ := core.NewBlockChain(Testdb, nil, params.TestChainConfig, ethash.NewFaker(), vm.Config{}, nil)
 
 	hashes := make([]common.Hash, n+1)

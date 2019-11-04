@@ -41,10 +41,6 @@ var (
 	burnAddress                    = common.HexToAddress("0x0")
 	burnLeafKey                    = testhelpers.AddressToLeafKey(burnAddress)
 
-	block0Hash              = common.HexToHash("0xd1721cfd0b29c36fd7a68f25c128e86413fb666a6e1d68e89b875bd299262661")
-	block1Hash              = common.HexToHash("0xbbe88de60ba33a3f18c0caa37d827bfb70252e19e40a07cd34041696c35ecb1a")
-	block2Hash              = common.HexToHash("0x34ad0fd9bb2911986b75d518c822641079dea823bc6952343ebf05da1062b6f5")
-	block3Hash              = common.HexToHash("0x9872058136c560a6ebed0c0522b8d3016fc21f4fb0fb6585ddd8fd4c54f9909a")
 	balanceChange10000      = int64(10000)
 	balanceChange1000       = int64(1000)
 	block1BankBalance       = int64(99990000)
@@ -140,13 +136,13 @@ type arguments struct {
 }
 
 func TestBuilder(t *testing.T) {
-	_, blockMap, chain := testhelpers.MakeChain(3, testhelpers.Genesis)
+	blockHashes, blockMap, chain := testhelpers.MakeChain(3, testhelpers.Genesis)
 	contractLeafKey = testhelpers.AddressToLeafKey(testhelpers.ContractAddr)
 	defer chain.Stop()
-	block0 = blockMap[block0Hash]
-	block1 = blockMap[block1Hash]
-	block2 = blockMap[block2Hash]
-	block3 = blockMap[block3Hash]
+	block0 = blockMap[blockHashes[3]]
+	block1 = blockMap[blockHashes[2]]
+	block2 = blockMap[blockHashes[1]]
+	block3 = blockMap[blockHashes[0]]
 	config := statediff.Config{
 		PathsAndProofs:    true,
 		IntermediateNodes: false,
@@ -164,16 +160,17 @@ func TestBuilder(t *testing.T) {
 				oldStateRoot: block0.Root(),
 				newStateRoot: block0.Root(),
 				blockNumber:  block0.Number(),
-				blockHash:    block0Hash,
+				blockHash:    block0.Hash(),
 			},
 			&statediff.StateDiff{
 				BlockNumber:     block0.Number(),
-				BlockHash:       block0Hash,
+				BlockHash:       block0.Hash(),
 				CreatedAccounts: emptyAccountDiffEventualMap,
 				DeletedAccounts: emptyAccountDiffEventualMap,
 				UpdatedAccounts: emptyAccountDiffIncrementalMap,
 			},
 		},
+
 		{
 			"testBlock1",
 			//10000 transferred from testBankAddress to account1Addr
@@ -181,7 +178,7 @@ func TestBuilder(t *testing.T) {
 				oldStateRoot: block0.Root(),
 				newStateRoot: block1.Root(),
 				blockNumber:  block1.Number(),
-				blockHash:    block1Hash,
+				blockHash:    block1.Hash(),
 			},
 			&statediff.StateDiff{
 				BlockNumber: block1.Number(),
@@ -228,7 +225,7 @@ func TestBuilder(t *testing.T) {
 				oldStateRoot: block1.Root(),
 				newStateRoot: block2.Root(),
 				blockNumber:  block2.Number(),
-				blockHash:    block2Hash,
+				blockHash:    block2.Hash(),
 			},
 			&statediff.StateDiff{
 				BlockNumber: block2.Number(),
@@ -374,13 +371,13 @@ func TestBuilder(t *testing.T) {
 }
 
 func TestBuilderWithWatchedAddressList(t *testing.T) {
-	_, blockMap, chain := testhelpers.MakeChain(3, testhelpers.Genesis)
+	blockHashes, blockMap, chain := testhelpers.MakeChain(3, testhelpers.Genesis)
 	contractLeafKey = testhelpers.AddressToLeafKey(testhelpers.ContractAddr)
 	defer chain.Stop()
-	block0 = blockMap[block0Hash]
-	block1 = blockMap[block1Hash]
-	block2 = blockMap[block2Hash]
-	block3 = blockMap[block3Hash]
+	block0 = blockMap[blockHashes[3]]
+	block1 = blockMap[blockHashes[2]]
+	block2 = blockMap[blockHashes[1]]
+	block3 = blockMap[blockHashes[0]]
 	config := statediff.Config{
 		PathsAndProofs:    true,
 		IntermediateNodes: false,
@@ -399,11 +396,11 @@ func TestBuilderWithWatchedAddressList(t *testing.T) {
 				oldStateRoot: block0.Root(),
 				newStateRoot: block0.Root(),
 				blockNumber:  block0.Number(),
-				blockHash:    block0Hash,
+				blockHash:    block0.Hash(),
 			},
 			&statediff.StateDiff{
 				BlockNumber:     block0.Number(),
-				BlockHash:       block0Hash,
+				BlockHash:       block0.Hash(),
 				CreatedAccounts: emptyAccountDiffEventualMap,
 				DeletedAccounts: emptyAccountDiffEventualMap,
 				UpdatedAccounts: emptyAccountDiffIncrementalMap,
@@ -416,7 +413,7 @@ func TestBuilderWithWatchedAddressList(t *testing.T) {
 				oldStateRoot: block0.Root(),
 				newStateRoot: block1.Root(),
 				blockNumber:  block1.Number(),
-				blockHash:    block1Hash,
+				blockHash:    block1.Hash(),
 			},
 			&statediff.StateDiff{
 				BlockNumber: block1.Number(),
@@ -444,7 +441,7 @@ func TestBuilderWithWatchedAddressList(t *testing.T) {
 				oldStateRoot: block1.Root(),
 				newStateRoot: block2.Root(),
 				blockNumber:  block2.Number(),
-				blockHash:    block2Hash,
+				blockHash:    block2.Hash(),
 			},
 			&statediff.StateDiff{
 				BlockNumber: block2.Number(),

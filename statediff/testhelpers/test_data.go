@@ -23,10 +23,7 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core"
 	"github.com/ethereum/go-ethereum/core/rawdb"
-	"github.com/ethereum/go-ethereum/core/state"
 	"github.com/ethereum/go-ethereum/crypto"
-	"github.com/ethereum/go-ethereum/rlp"
-	"github.com/ethereum/go-ethereum/statediff"
 )
 
 // AddressToLeafKey hashes an returns an address
@@ -36,67 +33,14 @@ func AddressToLeafKey(address common.Address) common.Hash {
 
 // Test variables
 var (
-	BlockNumber     = big.NewInt(rand.Int63())
-	BlockHash       = "0xfa40fbe2d98d98b3363a778d52f2bcd29d6790b9b3f3cab2b167fd12d3550f73"
-	CodeHash        = common.Hex2Bytes("0xc5d2460186f7233c927e7db2dcc703c0e500b653ca82273b7bfad8045d85a470")
-	NewNonceValue   = rand.Uint64()
-	NewBalanceValue = rand.Int63()
-	ContractRoot    = common.HexToHash("0x56e81f171bcc55a6ff8345e692c0f86e5b48e01b996cadc001622fb5e363b421")
-	StoragePath     = common.HexToHash("0xc5d2460186f7233c927e7db2dcc703c0e500b653ca82273b7bfad8045d85a470").Bytes()
-	StorageKey      = common.HexToHash("0000000000000000000000000000000000000000000000000000000000000001").Bytes()
-	StorageValue    = common.Hex2Bytes("0x03")
-	storage         = []statediff.StorageDiff{{
-		Key:   StorageKey,
-		Value: StorageValue,
-		Path:  StoragePath,
-		Proof: [][]byte{},
-	}}
-	emptyStorage           = make([]statediff.StorageDiff, 0)
-	address                = common.HexToAddress("0xaE9BEa628c4Ce503DcFD7E305CaB4e29E7476592")
-	ContractLeafKey        = AddressToLeafKey(address)
-	anotherAddress         = common.HexToAddress("0xaE9BEa628c4Ce503DcFD7E305CaB4e29E7476593")
-	AnotherContractLeafKey = AddressToLeafKey(anotherAddress)
-	testAccount            = state.Account{
-		Nonce:    NewNonceValue,
-		Balance:  big.NewInt(NewBalanceValue),
-		Root:     ContractRoot,
-		CodeHash: CodeHash,
-	}
-	valueBytes, _       = rlp.EncodeToBytes(testAccount)
-	CreatedAccountDiffs = []statediff.AccountDiff{
-		{
-			Key:     ContractLeafKey.Bytes(),
-			Value:   valueBytes,
-			Storage: storage,
-		},
-		{
-			Key:     AnotherContractLeafKey.Bytes(),
-			Value:   valueBytes,
-			Storage: emptyStorage,
-		},
-	}
+	BlockNumber  = big.NewInt(rand.Int63())
+	BlockHash    = "0xfa40fbe2d98d98b3363a778d52f2bcd29d6790b9b3f3cab2b167fd12d3550f73"
+	CodeHash     = common.Hex2Bytes("0xc5d2460186f7233c927e7db2dcc703c0e500b653ca82273b7bfad8045d85a470")
+	StoragePath  = common.HexToHash("0xc5d2460186f7233c927e7db2dcc703c0e500b653ca82273b7bfad8045d85a470").Bytes()
+	StorageKey   = common.HexToHash("0000000000000000000000000000000000000000000000000000000000000001").Bytes()
+	StorageValue = common.Hex2Bytes("0x03")
 
-	UpdatedAccountDiffs = []statediff.AccountDiff{{
-		Key:     ContractLeafKey.Bytes(),
-		Value:   valueBytes,
-		Storage: storage,
-	}}
-
-	DeletedAccountDiffs = []statediff.AccountDiff{{
-		Key:     ContractLeafKey.Bytes(),
-		Value:   valueBytes,
-		Storage: storage,
-	}}
-
-	TestStateDiff = statediff.StateDiff{
-		BlockNumber:     BlockNumber,
-		BlockHash:       common.HexToHash(BlockHash),
-		CreatedAccounts: CreatedAccountDiffs,
-		DeletedAccounts: DeletedAccountDiffs,
-		UpdatedAccounts: UpdatedAccountDiffs,
-	}
-	Testdb = rawdb.NewMemoryDatabase()
-
+	Testdb          = rawdb.NewMemoryDatabase()
 	TestBankKey, _  = crypto.HexToECDSA("b71c71a67e1177ad4e901695e1b4b9ee17ae16c6668d313eac2f96dbcda3f291")
 	TestBankAddress = crypto.PubkeyToAddress(TestBankKey.PublicKey) //0x71562b71999873DB5b286dF957af199Ec94617F7
 	BankLeafKey     = AddressToLeafKey(TestBankAddress)
