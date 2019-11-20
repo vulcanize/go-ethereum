@@ -49,17 +49,18 @@ The state transitioning model does all the necessary work to work out a valid ne
 6) Derive new state root
 */
 type StateTransition struct {
-	gp         *GasPool
-	gp1559     *GasPool
-	msg        Message
-	gas        uint64
-	gasPrice   *big.Int
-	initialGas uint64
-	value      *big.Int
-	data       []byte
-	state      vm.StateDB
-	evm        *vm.EVM
-	isEIP1559  bool
+	gp              *GasPool
+	gp1559          *GasPool
+	msg             Message
+	gas             uint64
+	gasPrice        *big.Int
+	initialGas      uint64
+	value           *big.Int
+	data            []byte
+	state           vm.StateDB
+	evm             *vm.EVM
+	isEIP1559       bool
+	eip1559GasPrice *big.Int
 }
 
 // Message represents a message sent to a contract.
@@ -168,6 +169,14 @@ func NewStateTransition(evm *vm.EVM, msg Message, gp, gp1559 *GasPool) *StateTra
 		state:     evm.StateDB,
 		isEIP1559: isEIP1559,
 	}
+	if isEIP1559 {
+		// EP1559 gasPrice = min(BASEFEE + tx.fee_premium, tx.fee_cap)
+		st.eip1559GasPrice = new(big.Int).Add(evm.BaseFee, msg.GasPremium())
+		if st.eip1559GasPrice.Cmp(msg.FeeCap()) > 0 {
+			st.eip1559GasPrice.Set(msg.FeeCap())
+		}
+	}
+	return st
 }
 
 // ApplyMessage computes the new state by applying the given message
@@ -203,7 +212,7 @@ func (st *StateTransition) buyGasEIP1559() error {
 		gasPrice.Set(st.msg.FeeCap())
 	}
 	// tx.origin pays gasPrice * tx.gas
-	mgval := new(big.Int).Mul(new(big.Int).SetUint64(st.msg.Gas()), gasPrice)
+	mgval := new(big.Int).Mul(new(big.Int).SetUint64(st.msg.Gas()), st.eip1559GasPrice)
 	if st.state.GetBalance(st.msg.From()).Cmp(mgval) < 0 {
 		return errInsufficientBalanceForGas
 	}
@@ -245,6 +254,22 @@ func (st *StateTransition) preCheck() error {
 	// If we are past the EIP1559 finalization block and this transaction does not conform with EIP1559, throw an error
 	if st.evm.ChainConfig().IsEIP1559Finalized(st.evm.Context.BlockNumber) && !st.isEIP1559 {
 		return ErrTxNotEIP1559
+	}
+	// If we are before the EIP1559 initialization block, throw an error if we have EIP1559 fields or do not have a GasPrice
+	if !st.evm.ChainConfig().IsEIP1559(st.evm.BlockNumber) && (st.msg.GasPremium() != nil || st.msg.FeeCap() != nil || st.gp1559 != nil || st.evm.BaseFee != nil || st.msg.GasPrice() == nil) {
+		return ErrTxIsEIP1559
+	}
+	// If transaction has both legacy and EIP1559 fields, throw an error
+	if (st.msg.GasPremium() != nil || st.msg.FeeCap() != nil) && st.msg.GasPrice() != nil {
+		return ErrTxSetsLegacyAndEIP1559Fields
+	}
+	// We need a BaseFee if we are past EIP1559 initialization
+	if st.evm.ChainConfig().IsEIP1559(st.evm.BlockNumber) && st.evm.BaseFee == nil {
+		return ErrNoBaseFee
+	}
+	// We need either a GasPrice or a FeeCap and GasPremium to be set
+	if st.msg.GasPrice() == nil && (st.msg.GasPremium() == nil || st.msg.FeeCap() == nil) {
+		return ErrMissingGasFields
 	}
 	return st.buyGas()
 }
