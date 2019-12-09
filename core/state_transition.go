@@ -154,11 +154,8 @@ func IntrinsicGas(data []byte, contractCreation, isHomestead bool, isEIP2028 boo
 
 // NewStateTransition initialises and returns a new state transition object.
 func NewStateTransition(evm *vm.EVM, msg Message, gp, gp1559 *GasPool) *StateTransition {
-	isEIP1559 := evm.ChainConfig().IsEIP1559(evm.Context.BlockNumber) && msg.GasPremium() != nil && msg.FeeCap() != nil && evm.Context.BaseFee != nil && gp1559 != nil
-	// check that msg doesn't try to set both legacy and 1559 params
-	// check that legacy has legacy params set
-	// reject 1559 trxs if we are before the 1559 fork blocknumber
-	return &StateTransition{
+	isEIP1559 := evm.ChainConfig().IsEIP1559(evm.Context.BlockNumber) && msg.GasPrice() == nil && msg.GasPremium() != nil && msg.FeeCap() != nil && evm.Context.BaseFee != nil && gp1559 != nil
+	st := &StateTransition{
 		gp:        gp,
 		gp1559:    gp1559,
 		evm:       evm,
@@ -171,7 +168,7 @@ func NewStateTransition(evm *vm.EVM, msg Message, gp, gp1559 *GasPool) *StateTra
 	}
 	if isEIP1559 {
 		// EP1559 gasPrice = min(BASEFEE + tx.fee_premium, tx.fee_cap)
-		st.eip1559GasPrice = new(big.Int).Add(evm.BaseFee, msg.GasPremium())
+		st.eip1559GasPrice = new(big.Int).Add(evm.Context.BaseFee, msg.GasPremium())
 		if st.eip1559GasPrice.Cmp(msg.FeeCap()) > 0 {
 			st.eip1559GasPrice.Set(msg.FeeCap())
 		}
@@ -256,7 +253,7 @@ func (st *StateTransition) preCheck() error {
 		return ErrTxNotEIP1559
 	}
 	// If we are before the EIP1559 activation block, throw an error if we have EIP1559 fields or do not have a GasPrice
-	if !st.evm.ChainConfig().IsEIP1559(st.evm.BlockNumber) && (st.msg.GasPremium() != nil || st.msg.FeeCap() != nil || st.gp1559 != nil || st.evm.BaseFee != nil || st.msg.GasPrice() == nil) {
+	if !st.evm.ChainConfig().IsEIP1559(st.evm.Context.BlockNumber) && (st.msg.GasPremium() != nil || st.msg.FeeCap() != nil || st.gp1559 != nil || st.evm.Context.BaseFee != nil || st.msg.GasPrice() == nil) {
 		return ErrTxIsEIP1559
 	}
 	// If transaction has both legacy and EIP1559 fields, throw an error
@@ -264,7 +261,7 @@ func (st *StateTransition) preCheck() error {
 		return ErrTxSetsLegacyAndEIP1559Fields
 	}
 	// We need a BaseFee if we are past EIP1559 activation
-	if st.evm.ChainConfig().IsEIP1559(st.evm.BlockNumber) && st.evm.BaseFee == nil {
+	if st.evm.ChainConfig().IsEIP1559(st.evm.Context.BlockNumber) && st.evm.Context.BaseFee == nil {
 		return ErrNoBaseFee
 	}
 	// We need either a GasPrice or a FeeCap and GasPremium to be set
