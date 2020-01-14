@@ -77,7 +77,7 @@ var (
 	errInvalidDifficulty = errors.New("non-positive difficulty")
 	errInvalidMixDigest  = errors.New("invalid mix digest")
 	errInvalidPoW        = errors.New("invalid proof-of-work")
-	errGasLimitSet       = errors.New("GasLimit should not be set after EIP1559 has finalized")
+	errExceedGasLimit    = errors.New("transaction gas usage exceeds the per-transaction limit")
 )
 
 // Author implements consensus.Engine, returning the header's coinbase as the
@@ -171,7 +171,19 @@ func (ethash *Ethash) VerifyHeaders(chain consensus.ChainHeaderReader, headers [
 	return abort, errorsOut
 }
 
-func (ethash *Ethash) verifyHeaderWorker(chain consensus.ChainHeaderReader, headers []*types.Header, seals []bool, index int) error {
+// VerifyTransactions verifies a the transactions in a block do not exceed the per-transaction gas limit
+func (*Ethash) VerifyTransactions(chain consensus.ChainReader, block *types.Block) error {
+	if chain.Config().IsEIP1559(block.Number()) {
+		for _, tx := range block.Transactions() {
+			if tx.Gas() > params.PerTransactionGasLimit {
+				return errExceedGasLimit
+			}
+		}
+	}
+	return nil
+}
+
+func (ethash *Ethash) verifyHeaderWorker(chain consensus.ChainReader, headers []*types.Header, seals []bool, index int) error {
 	var parent *types.Header
 	if index == 0 {
 		parent = chain.GetHeader(headers[0].ParentHash, headers[0].Number.Uint64()-1)
