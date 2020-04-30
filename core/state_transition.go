@@ -27,8 +27,8 @@ import (
 )
 
 var (
-	errInsufficientBalanceForGas   = errors.New("insufficient balance to pay for gas")
-	errInsufficientCoinbaseBalance = errors.New("insufficient coinbase balance to apply a negative coinbase credit")
+	errInsufficientBalanceForGas      = errors.New("insufficient balance to pay for gas")
+	ErrEIP1559GasPriceLessThanBaseFee = errors.New("EIP11559 GasPrice is less than the current BaseFee")
 )
 
 /*
@@ -267,6 +267,12 @@ func (st *StateTransition) preCheck() error {
 	// We need either a GasPrice or a FeeCap and GasPremium to be set
 	if st.msg.GasPrice() == nil && (st.msg.GasPremium() == nil || st.msg.FeeCap() == nil) {
 		return ErrMissingGasFields
+	}
+	// If it is an EIp1559 transaction, make sure the derived gasPrice is >= baseFee
+	if st.isEIP1559 {
+		if st.eip1559GasPrice.Cmp(st.evm.BaseFee) < 0 {
+			return ErrEIP1559GasPriceLessThanBaseFee
+		}
 	}
 	return st.buyGas()
 }
