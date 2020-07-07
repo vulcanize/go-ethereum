@@ -267,8 +267,8 @@ var (
 	TestRules = TestChainConfig.Rules(new(big.Int))
 
 	// EIP1559 test configs
-	EIP1559ChainConfig          = &ChainConfig{big.NewInt(1), big.NewInt(0), nil, false, big.NewInt(0), common.Hash{}, big.NewInt(0), big.NewInt(0), big.NewInt(0), big.NewInt(0), big.NewInt(0), big.NewInt(0), big.NewInt(0), big.NewInt(0), big.NewInt(0), nil, nil, new(EthashConfig), nil, DefaultEIP1559Config}
-	EIP1559FinalizedChainConfig = &ChainConfig{big.NewInt(1), big.NewInt(0), nil, false, big.NewInt(0), common.Hash{}, big.NewInt(0), big.NewInt(0), big.NewInt(0), big.NewInt(0), big.NewInt(0), big.NewInt(0), big.NewInt(0), big.NewInt(0), big.NewInt(0), big.NewInt(0), nil, new(EthashConfig), nil, DefaultEIP1559Config}
+	EIP1559ChainConfig          = &ChainConfig{big.NewInt(1), big.NewInt(0), nil, false, big.NewInt(0), common.Hash{}, big.NewInt(0), big.NewInt(0), big.NewInt(0), big.NewInt(0), big.NewInt(0), big.NewInt(0), big.NewInt(0), big.NewInt(0), nil, nil, nil, new(EthashConfig), nil, DefaultEIP1559Config}
+	EIP1559FinalizedChainConfig = &ChainConfig{big.NewInt(1), big.NewInt(0), nil, false, big.NewInt(0), common.Hash{}, big.NewInt(0), big.NewInt(0), big.NewInt(0), big.NewInt(0), big.NewInt(0), big.NewInt(0), big.NewInt(0), big.NewInt(0), big.NewInt(0), nil, nil, new(EthashConfig), nil, DefaultEIP1559Config}
 
 	EIP1559TestRules          = EIP1559ChainConfig.Rules(new(big.Int))
 	EIP1559FinalizedTestRules = EIP1559FinalizedChainConfig.Rules(new(big.Int))
@@ -419,7 +419,6 @@ func (c *ChainConfig) String() string {
 		c.YoloV2Block,
 		c.EIP1559Block,
 		c.EIP1559FinalizedBlock,
-		c.EWASMBlock,
 		engine,
 	)
 }
@@ -537,7 +536,6 @@ func (c *ChainConfig) CheckConfigForkOrder() error {
 		{name: "yoloV2Block", block: c.YoloV2Block},
 		{name: "eip1559Block", block: c.EIP1559Block},
 		{name: "eip1559FinalizedBlock", block: c.EIP1559FinalizedBlock},
-		{name: "ewasmBlock", block: c.EWASMBlock},
 	} {
 		if lastFork.name != "" {
 			// Next one must be higher number
@@ -609,15 +607,6 @@ func (c *ChainConfig) checkCompatible(newcfg *ChainConfig, head *big.Int) *Confi
 	}
 	if isForkIncompatible(c.EIP1559FinalizedBlock, newcfg.EIP1559FinalizedBlock, head) {
 		return newCompatError("EIP1559Finalized fork block", c.EIP1559FinalizedBlock, newcfg.EIP1559FinalizedBlock)
-	}
-	if isForkIncompatible(c.EIP1559Block, newcfg.EIP1559Block, head) {
-		return newCompatError("EIP1559 fork block", c.EIP1559Block, newcfg.EIP1559Block)
-	}
-	if isForkIncompatible(c.EIP1559FinalizedBlock, newcfg.EIP1559FinalizedBlock, head) {
-		return newCompatError("EIP1559Finalized fork block", c.EIP1559FinalizedBlock, newcfg.EIP1559FinalizedBlock)
-	}
-	if isForkIncompatible(c.EWASMBlock, newcfg.EWASMBlock, head) {
-		return newCompatError("EWASM fork block", c.EWASMBlock, newcfg.EWASMBlock)
 	}
 	return nil
 }
