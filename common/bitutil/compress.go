@@ -58,7 +58,7 @@ var (
 // representation algorithm. If the result is bigger than the original input, no
 // compression is done.
 func CompressBytes(data []byte) []byte {
-	if out := bitsetEncodeBytes(data); len(out) < len(data) {
+	if out := bitsetEncodeBytes(data); len(out) <= len(data) {
 		return out
 	}
 	cpy := make([]byte, len(data))
