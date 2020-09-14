@@ -749,6 +749,37 @@ var (
 		Usage: "External EVM configuration (default = built-in interpreter)",
 		Value: "",
 	}
+
+	// Postgres flags
+	PostgresDatastoreFlag = cli.BoolFlag{
+		Name:  "postgres",
+		Usage: "Turn on Postgres as the backing datastore",
+	}
+	PostgresHostnameFlag = cli.StringFlag{
+		Name:  "postgres.hostname",
+		Usage: "Hostname for the Postgres database",
+		Value: "localhost",
+	}
+	PostgresPortFlag = cli.IntFlag{
+		Name:  "postgres.port",
+		Usage: "Port for the Postgres database",
+		Value: 5432,
+	}
+	PostgresUserFlag = cli.StringFlag{
+		Name:  "postgres.user",
+		Usage: "User for the Postgres database",
+		Value: "postgres",
+	}
+	PostgresPasswordFlag = cli.StringFlag{
+		Name:  "postgres.password",
+		Usage: "Password for the Postgres database",
+		Value: "",
+	}
+	PostgresDatabaseNameFlag = cli.StringFlag{
+		Name:  "postgres.database",
+		Usage: "Name for the Postgres database",
+		Value: "geth",
+	}
 )
 
 // MakeDataDir retrieves the currently requested data directory, terminating
