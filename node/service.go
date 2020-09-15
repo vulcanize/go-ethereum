@@ -17,6 +17,7 @@
 package node
 
 import (
+	"github.com/ethereum/go-ethereum/ethdb/postgres"
 	"path/filepath"
 	"reflect"
 
@@ -66,6 +67,15 @@ func (ctx *ServiceContext) OpenDatabaseWithFreezer(name string, cache int, handl
 		freezer = ctx.config.ResolvePath(freezer)
 	}
 	return rawdb.NewLevelDBDatabaseWithFreezer(root, cache, handles, freezer, namespace)
+}
+
+// OpenPostgresDatabase opens a Postgres-backed ethdb.Database
+func (ctx *ServiceContext) OpenPostgresDatabase(c *postgres.Config) (ethdb.Database, error) {
+	db, err := postgres.NewDB(c)
+	if err != nil {
+		return nil, err
+	}
+	return postgres.NewDatabase(db), nil
 }
 
 // ResolvePath resolves a user path into the data directory if that was relative
