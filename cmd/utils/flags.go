@@ -32,6 +32,8 @@ import (
 	"text/template"
 	"time"
 
+	"github.com/ethereum/go-ethereum/ethdb/postgres"
+
 	"github.com/ethereum/go-ethereum/accounts"
 	"github.com/ethereum/go-ethereum/accounts/keystore"
 	"github.com/ethereum/go-ethereum/common"
@@ -1205,6 +1207,9 @@ func SetNodeConfig(ctx *cli.Context, cfg *node.Config) {
 	setNodeUserIdent(ctx, cfg)
 	setDataDir(ctx, cfg)
 	setSmartCard(ctx, cfg)
+	if ctx.GlobalBool(PostgresDatastoreFlag.Name) {
+		setNodePostgres(ctx, cfg)
+	}
 
 	if ctx.GlobalIsSet(ExternalSignerFlag.Name) {
 		cfg.ExternalSigner = ctx.GlobalString(ExternalSignerFlag.Name)
@@ -1221,6 +1226,31 @@ func SetNodeConfig(ctx *cli.Context, cfg *node.Config) {
 	}
 	if ctx.GlobalIsSet(InsecureUnlockAllowedFlag.Name) {
 		cfg.InsecureUnlockAllowed = ctx.GlobalBool(InsecureUnlockAllowedFlag.Name)
+	}
+}
+
+func setNodePostgres(ctx *cli.Context, cfg *node.Config) {
+	if !ctx.GlobalIsSet(PostgresDatabaseNameFlag.Name) {
+		log.Info("Node: Postgres database name not provided, defaulting to 'geth'")
+	}
+	if !ctx.GlobalIsSet(PostgresHostnameFlag.Name) {
+		log.Info("Node:Postgres hostname not provided, defaulting to localhost")
+	}
+	if !ctx.GlobalIsSet(PostgresPortFlag.Name) {
+		log.Info("Node:Postgres port not provided, defaulting to 5432")
+	}
+	if !ctx.GlobalIsSet(PostgresUserFlag.Name) {
+		log.Info("Node:Postgres user not provided, defaulting to 'postgres'")
+	}
+	if !ctx.GlobalIsSet(PostgresPasswordFlag.Name) {
+		log.Info("Node:Postgres password not provided")
+	}
+	cfg.PostgresConfig = &postgres.Config{
+		Database: ctx.GlobalString(PostgresDatabaseNameFlag.Name),
+		Hostname: ctx.GlobalString(PostgresHostnameFlag.Name),
+		Port:     ctx.GlobalInt(PostgresPortFlag.Name),
+		User:     ctx.GlobalString(PostgresUserFlag.Name),
+		Password: ctx.GlobalString(PostgresPasswordFlag.Name),
 	}
 }
 
@@ -1460,6 +1490,9 @@ func SetEthConfig(ctx *cli.Context, stack *node.Node, cfg *eth.Config) {
 	setMiner(ctx, &cfg.Miner)
 	setWhitelist(ctx, cfg)
 	setLes(ctx, cfg)
+	if ctx.GlobalBool(PostgresDatastoreFlag.Name) {
+		setEthPostgres(ctx, cfg)
+	}
 
 	if ctx.GlobalIsSet(SyncModeFlag.Name) {
 		cfg.SyncMode = *GlobalTextMarshaler(ctx, SyncModeFlag.Name).(*downloader.SyncMode)
@@ -1552,6 +1585,31 @@ func SetEthConfig(ctx *cli.Context, stack *node.Node, cfg *eth.Config) {
 		if !ctx.GlobalIsSet(MinerGasPriceFlag.Name) && !ctx.GlobalIsSet(MinerLegacyGasPriceFlag.Name) {
 			cfg.Miner.GasPrice = big.NewInt(1)
 		}
+	}
+}
+
+func setEthPostgres(ctx *cli.Context, cfg *eth.Config) {
+	if !ctx.GlobalIsSet(PostgresDatabaseNameFlag.Name) {
+		log.Info("Eth: Postgres database name not provided, defaulting to 'geth'")
+	}
+	if !ctx.GlobalIsSet(PostgresHostnameFlag.Name) {
+		log.Info("Eth:Postgres hostname not provided, defaulting to localhost")
+	}
+	if !ctx.GlobalIsSet(PostgresPortFlag.Name) {
+		log.Info("Eth:Postgres port not provided, defaulting to 5432")
+	}
+	if !ctx.GlobalIsSet(PostgresUserFlag.Name) {
+		log.Info("Eth:Postgres user not provided, defaulting to 'postgres'")
+	}
+	if !ctx.GlobalIsSet(PostgresPasswordFlag.Name) {
+		log.Info("Eth:Postgres password not provided")
+	}
+	cfg.PostgresConfig = &postgres.Config{
+		Database: ctx.GlobalString(PostgresDatabaseNameFlag.Name),
+		Hostname: ctx.GlobalString(PostgresHostnameFlag.Name),
+		Port:     ctx.GlobalInt(PostgresPortFlag.Name),
+		User:     ctx.GlobalString(PostgresUserFlag.Name),
+		Password: ctx.GlobalString(PostgresPasswordFlag.Name),
 	}
 }
 

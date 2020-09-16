@@ -25,6 +25,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/ethereum/go-ethereum/core/rawdb"
+
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/mclock"
 	"github.com/ethereum/go-ethereum/common/prque"
@@ -654,16 +656,16 @@ const (
 )
 
 var (
-	positiveBalancePrefix    = []byte("pb:")             // dbVersion(uint16 big endian) + positiveBalancePrefix + id -> balance
-	negativeBalancePrefix    = []byte("nb:")             // dbVersion(uint16 big endian) + negativeBalancePrefix + ip -> balance
-	cumulativeRunningTimeKey = []byte("cumulativeTime:") // dbVersion(uint16 big endian) + cumulativeRunningTimeKey -> cumulativeTime
+	positiveBalancePrefix    = []byte("pb")             // dbVersion(uint16 big endian) + positiveBalancePrefix + id -> balance
+	negativeBalancePrefix    = []byte("nb")             // dbVersion(uint16 big endian) + negativeBalancePrefix + ip -> balance
+	cumulativeRunningTimeKey = []byte("cumulativeTime") // dbVersion(uint16 big endian) + cumulativeRunningTimeKey -> cumulativeTime
 )
 
 type nodeDB struct {
 	db              ethdb.Database
 	pcache          *lru.Cache
 	ncache          *lru.Cache
-	auxbuf          []byte                                // 37-byte auxiliary buffer for key encoding
+	auxbuf          []byte                                // 38-byte auxiliary buffer for key encoding
 	verbuf          [2]byte                               // 2-byte auxiliary buffer for db version
 	nbEvictCallBack func(mclock.AbsTime, negBalance) bool // Callback to determine whether the negative balance can be evicted.
 	clock           mclock.Clock
@@ -692,9 +694,9 @@ func (db *nodeDB) close() {
 }
 
 func (db *nodeDB) key(id []byte, neg bool) []byte {
-	prefix := positiveBalancePrefix
+	prefix := append(positiveBalancePrefix, rawdb.KeyDelineation...)
 	if neg {
-		prefix = negativeBalancePrefix
+		prefix = append(negativeBalancePrefix, rawdb.KeyDelineation...)
 	}
 	if len(prefix)+len(db.verbuf)+len(id) > len(db.auxbuf) {
 		db.auxbuf = append(db.auxbuf, make([]byte, len(prefix)+len(db.verbuf)+len(id)-len(db.auxbuf))...)

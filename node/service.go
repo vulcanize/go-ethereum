@@ -17,9 +17,10 @@
 package node
 
 import (
-	"github.com/ethereum/go-ethereum/ethdb/postgres"
 	"path/filepath"
 	"reflect"
+
+	"github.com/ethereum/go-ethereum/ethdb/postgres"
 
 	"github.com/ethereum/go-ethereum/accounts"
 	"github.com/ethereum/go-ethereum/core/rawdb"
@@ -43,6 +44,9 @@ type ServiceContext struct {
 // if no previous can be found) from within the node's data directory. If the
 // node is an ephemeral one, a memory database is returned.
 func (ctx *ServiceContext) OpenDatabase(name string, cache int, handles int, namespace string) (ethdb.Database, error) {
+	if ctx.config.PostgresConfig != nil {
+		return ctx.openPostgresDatabase()
+	}
 	if ctx.config.DataDir == "" {
 		return rawdb.NewMemoryDatabase(), nil
 	}
@@ -55,6 +59,9 @@ func (ctx *ServiceContext) OpenDatabase(name string, cache int, handles int, nam
 // database to immutable append-only files. If the node is an ephemeral one, a
 // memory database is returned.
 func (ctx *ServiceContext) OpenDatabaseWithFreezer(name string, cache int, handles int, freezer string, namespace string) (ethdb.Database, error) {
+	if ctx.config.PostgresConfig != nil {
+		return ctx.openPostgresDatabase()
+	}
 	if ctx.config.DataDir == "" {
 		return rawdb.NewMemoryDatabase(), nil
 	}
@@ -69,9 +76,8 @@ func (ctx *ServiceContext) OpenDatabaseWithFreezer(name string, cache int, handl
 	return rawdb.NewLevelDBDatabaseWithFreezer(root, cache, handles, freezer, namespace)
 }
 
-// OpenPostgresDatabase opens a Postgres-backed ethdb.Database
-func (ctx *ServiceContext) OpenPostgresDatabase(c *postgres.Config) (ethdb.Database, error) {
-	db, err := postgres.NewDB(c)
+func (ctx *ServiceContext) openPostgresDatabase() (ethdb.Database, error) {
+	db, err := postgres.NewDB(ctx.config.PostgresConfig)
 	if err != nil {
 		return nil, err
 	}

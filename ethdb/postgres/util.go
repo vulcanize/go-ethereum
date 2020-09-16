@@ -55,6 +55,8 @@ func DatastoreKeyFromGethKey(h []byte) (string, []byte, error) {
 		// I.e. the public.blocks datastore key == the hex representation of the geth key
 		// Alternatively, decompose the data and derive the hash
 		return common.Bytes2Hex(h), keyComponents[0], nil
+	case Static:
+		return common.Bytes2Hex(h), nil, nil
 	default:
 		return "", nil, fmt.Errorf("invalid formatting of database key: %x", h)
 	}

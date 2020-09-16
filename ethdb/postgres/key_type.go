@@ -18,12 +18,15 @@ package postgres
 
 import (
 	"bytes"
+
+	"github.com/ethereum/go-ethereum/core/rawdb"
 )
 
 type KeyType uint
 
 const (
 	Invalid KeyType = iota
+	Static
 	Keccak
 	Prefixed
 	Suffixed
@@ -31,30 +34,20 @@ const (
 	Preimage
 )
 
-var (
-	// keyDelineation is used to delineate the key prefixes and suffixes
-	KeyDelineation = []byte("/")
-
-	// numberDelineation is used to delineate the block number encoded in a key
-	NumberDelineation = []byte(":")
-
-	// Data item prefixes (use single byte to avoid mixing data types, avoid `i`, used for indexes).
-	HeaderPrefix   = []byte("h")           // headerPrefix + num (uint64 big endian) + hash -> header
-	PreimagePrefix = []byte("secure-key-") // preimagePrefix + hash -> preimage
-)
-
 // ResolveKeyType returns the key type based on the prefix
 func ResolveKeyType(key []byte) (KeyType, [][]byte) {
-	sk := bytes.Split(key, KeyDelineation)
-
+	sk := bytes.Split(key, rawdb.KeyDelineation)
 	switch len(sk) {
 	case 1:
+		if len(sk[0]) < 32 {
+			return Static, sk
+		}
 		return Keccak, sk
 	case 2:
 		switch prefix := sk[0]; {
-		case bytes.Equal(prefix, HeaderPrefix):
-			return Header, bytes.Split(sk[1], NumberDelineation)
-		case bytes.Equal(prefix, PreimagePrefix):
+		case bytes.Equal(prefix, rawdb.HeaderPrefix):
+			return Header, bytes.Split(sk[1], rawdb.NumberDelineation)
+		case bytes.Equal(prefix, rawdb.PreimagePrefix):
 			return Preimage, sk
 		default:
 			return Prefixed, sk
