@@ -92,17 +92,12 @@ func deployNode(client *sshClient, network string, bootnodes []string, config *n
 	workdir := fmt.Sprintf("%d", rand.Int63())
 	files := make(map[string][]byte)
 
-	lightFlag := ""
-	if config.peersLight > 0 {
-		lightFlag = fmt.Sprintf("--lightpeers=%d --lightserv=50", config.peersLight)
-	}
 	dockerfile := new(bytes.Buffer)
 	template.Must(template.New("").Parse(nodeDockerfile)).Execute(dockerfile, map[string]interface{}{
 		"NetworkID": config.network,
 		"Port":      config.port,
 		"IP":        client.address,
 		"Peers":     config.peersTotal,
-		"LightFlag": lightFlag,
 		"Bootnodes": strings.Join(bootnodes, ","),
 		"Ethstats":  config.ethstats,
 		"Etherbase": config.etherbase,
@@ -121,8 +116,6 @@ func deployNode(client *sshClient, network string, bootnodes []string, config *n
 		"Network":    network,
 		"Port":       config.port,
 		"TotalPeers": config.peersTotal,
-		"Light":      config.peersLight > 0,
-		"LightPeers": config.peersLight,
 		"Ethstats":   config.ethstats[:strings.Index(config.ethstats, ":")],
 		"Etherbase":  config.etherbase,
 		"GasTarget":  config.gasTarget,
@@ -160,7 +153,6 @@ type nodeInfos struct {
 	port       int
 	enode      string
 	peersTotal int
-	peersLight int
 	etherbase  string
 	keyJSON    string
 	keyPass    string
@@ -258,7 +250,6 @@ func checkNode(client *sshClient, network string, boot bool) (*nodeInfos, error)
 		ethashdir:  infos.volumes["/root/.ethash"],
 		port:       port,
 		peersTotal: totalPeers,
-		peersLight: lightPeers,
 		ethstats:   infos.envvars["STATS_NAME"],
 		etherbase:  infos.envvars["MINER_NAME"],
 		keyJSON:    keyJSON,

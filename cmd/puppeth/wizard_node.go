@@ -48,9 +48,9 @@ func (w *wizard) deployNode(boot bool) {
 	infos, err := checkNode(client, w.network, boot)
 	if err != nil {
 		if boot {
-			infos = &nodeInfos{port: 30303, peersTotal: 512, peersLight: 256}
+			infos = &nodeInfos{port: 30303, peersTotal: 512}
 		} else {
-			infos = &nodeInfos{port: 30303, peersTotal: 50, peersLight: 0, gasTarget: 7.5, gasLimit: 10, gasPrice: 1}
+			infos = &nodeInfos{port: 30303, peersTotal: 50, gasTarget: 7.5, gasLimit: 10, gasPrice: 1}
 		}
 	}
 	existed := err == nil
@@ -90,7 +90,6 @@ func (w *wizard) deployNode(boot bool) {
 	// Figure out how many light peers to allow (different based on node type)
 	fmt.Println()
 	fmt.Printf("How many light peers to allow connecting? (default = %d)\n", infos.peersLight)
-	infos.peersLight = w.readDefaultInt(infos.peersLight)
 
 	// Set a proper name to report on the stats page
 	fmt.Println()
