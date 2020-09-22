@@ -337,6 +337,7 @@ func (c *Client) BatchCallContext(ctx context.Context, b []BatchElem) error {
 	for i, elem := range b {
 		msg, err := c.newMessage(elem.Method, elem.Args...)
 		if err != nil {
+			fmt.Println(">>>FAILED", "newMessage", elem)
 			return err
 		}
 		msgs[i] = msg
@@ -345,9 +346,14 @@ func (c *Client) BatchCallContext(ctx context.Context, b []BatchElem) error {
 
 	var err error
 	if c.isHTTP {
+		// fmt.Println("(http)msgs", msgs)
 		err = c.sendBatchHTTP(ctx, op, msgs)
 	} else {
+		// fmt.Println("msgs", msgs)
 		err = c.send(ctx, op, msgs)
+	}
+	if err != nil {
+		fmt.Println(">>>FAILED", "send", op, msgs)
 	}
 
 	// Wait for all responses to come back.
@@ -355,6 +361,7 @@ func (c *Client) BatchCallContext(ctx context.Context, b []BatchElem) error {
 		var resp *jsonrpcMessage
 		resp, err = op.wait(ctx, c)
 		if err != nil {
+			fmt.Println(">>>FAILED", "wait", op)
 			break
 		}
 		// Find the element corresponding to this response.
@@ -369,13 +376,22 @@ func (c *Client) BatchCallContext(ctx context.Context, b []BatchElem) error {
 		}
 		if resp.Error != nil {
 			elem.Error = resp.Error
+			fmt.Println(">>>FAILED", "resp", resp.Error)
 			continue
 		}
 		if len(resp.Result) == 0 {
 			elem.Error = ErrNoResult
+			fmt.Println(">>>FAILED", "resp (empty)")
 			continue
 		}
 		elem.Error = json.Unmarshal(resp.Result, elem.Result)
+
+		show := fmt.Sprintf("%v", elem.Result)
+		const SIZE = 100
+		if len(show) > SIZE {
+			show = show[:SIZE/2] + "..." + show[len(show)-SIZE:]
+		}
+		fmt.Println(">>>RESULT", show)
 	}
 	return err
 }

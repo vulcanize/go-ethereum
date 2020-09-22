@@ -122,7 +122,12 @@ func DialHTTPWithClient(endpoint string, client *http.Client) (*Client, error) {
 
 // DialHTTP creates a new RPC client that connects to an RPC server over HTTP.
 func DialHTTP(endpoint string) (*Client, error) {
-	return DialHTTPWithClient(endpoint, new(http.Client))
+	c := &http.Client{
+		CheckRedirect: func(req *http.Request, via []*http.Request) error {
+			return http.ErrUseLastResponse
+		},
+	}
+	return DialHTTPWithClient(endpoint, c)
 }
 
 func (c *Client) sendHTTP(ctx context.Context, op *requestOp, msg interface{}) error {
@@ -153,11 +158,13 @@ func (c *Client) sendBatchHTTP(ctx context.Context, op *requestOp, msgs []*jsonr
 	hc := c.writeConn.(*httpConn)
 	respBody, err := hc.doRequest(ctx, msgs)
 	if err != nil {
+		fmt.Println(">>>FAILED", "doRequest", msgs)
 		return err
 	}
 	defer respBody.Close()
 	var respmsgs []jsonrpcMessage
 	if err := json.NewDecoder(respBody).Decode(&respmsgs); err != nil {
+		fmt.Println(">>>FAILED", "Decode", respBody)
 		return err
 	}
 	for i := 0; i < len(respmsgs); i++ {
@@ -169,17 +176,28 @@ func (c *Client) sendBatchHTTP(ctx context.Context, op *requestOp, msgs []*jsonr
 func (hc *httpConn) doRequest(ctx context.Context, msg interface{}) (io.ReadCloser, error) {
 	body, err := json.Marshal(msg)
 	if err != nil {
+		fmt.Println(">>>FAILED", "Marshal", msg)
 		return nil, err
 	}
 	req := hc.req.WithContext(ctx)
 	req.Body = ioutil.NopCloser(bytes.NewReader(body))
 	req.ContentLength = int64(len(body))
+	req.Close = true
+	fmt.Println(">>>SET Close")
 
+	{
+		buf := new(bytes.Buffer)
+		rcbody := ioutil.NopCloser(bytes.NewReader(body))
+		buf.ReadFrom(rcbody)
+		fmt.Printf(">>> %v '%v'\n", "Do(Body)", buf.String())
+	}
 	resp, err := hc.client.Do(req)
 	if err != nil {
+		fmt.Println(">>>FAILED", "Do", req)
 		return nil, err
 	}
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		fmt.Println(">>>FAILED", "StatusCode", resp.StatusCode)
 		return resp.Body, errors.New(resp.Status)
 	}
 	return resp.Body, nil
