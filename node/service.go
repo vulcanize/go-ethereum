@@ -45,7 +45,11 @@ type ServiceContext struct {
 // node is an ephemeral one, a memory database is returned.
 func (ctx *ServiceContext) OpenDatabase(name string, cache int, handles int, namespace string) (ethdb.Database, error) {
 	if ctx.config.PostgresConfig != nil {
-		return ctx.openPostgresDatabase()
+		db, err := postgres.NewDB(ctx.config.PostgresConfig)
+		if err != nil {
+			return nil, err
+		}
+		return postgres.NewDatabase(db), nil
 	}
 	if ctx.config.DataDir == "" {
 		return rawdb.NewMemoryDatabase(), nil
@@ -60,7 +64,7 @@ func (ctx *ServiceContext) OpenDatabase(name string, cache int, handles int, nam
 // memory database is returned.
 func (ctx *ServiceContext) OpenDatabaseWithFreezer(name string, cache int, handles int, freezer string, namespace string) (ethdb.Database, error) {
 	if ctx.config.PostgresConfig != nil {
-		return ctx.openPostgresDatabase()
+		return rawdb.NewDatabaseWithCleaner(ctx.config.PostgresConfig)
 	}
 	if ctx.config.DataDir == "" {
 		return rawdb.NewMemoryDatabase(), nil
@@ -74,14 +78,6 @@ func (ctx *ServiceContext) OpenDatabaseWithFreezer(name string, cache int, handl
 		freezer = ctx.config.ResolvePath(freezer)
 	}
 	return rawdb.NewLevelDBDatabaseWithFreezer(root, cache, handles, freezer, namespace)
-}
-
-func (ctx *ServiceContext) openPostgresDatabase() (ethdb.Database, error) {
-	db, err := postgres.NewDB(ctx.config.PostgresConfig)
-	if err != nil {
-		return nil, err
-	}
-	return postgres.NewDatabase(db), nil
 }
 
 // ResolvePath resolves a user path into the data directory if that was relative

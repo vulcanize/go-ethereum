@@ -25,8 +25,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/ethereum/go-ethereum/core/rawdb"
-
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/mclock"
 	"github.com/ethereum/go-ethereum/common/prque"
@@ -34,7 +32,7 @@ import (
 	"github.com/ethereum/go-ethereum/log"
 	"github.com/ethereum/go-ethereum/p2p/enode"
 	"github.com/ethereum/go-ethereum/rlp"
-	lru "github.com/hashicorp/golang-lru"
+	"github.com/hashicorp/golang-lru"
 )
 
 const (
@@ -54,6 +52,8 @@ const (
 	// free trial time!
 	connectedBias = time.Minute * 3
 )
+
+var prefixDelineation = []byte("-fix-")
 
 // clientPool implements a client database that assigns a priority to each client
 // based on a positive and negative balance. Positive balance is externally assigned
@@ -694,9 +694,9 @@ func (db *nodeDB) close() {
 }
 
 func (db *nodeDB) key(id []byte, neg bool) []byte {
-	prefix := append(positiveBalancePrefix, rawdb.KeyDelineation...)
+	prefix := append(positiveBalancePrefix, prefixDelineation...)
 	if neg {
-		prefix = append(negativeBalancePrefix, rawdb.KeyDelineation...)
+		prefix = append(negativeBalancePrefix, prefixDelineation...)
 	}
 	if len(prefix)+len(db.verbuf)+len(id) > len(db.auxbuf) {
 		db.auxbuf = append(db.auxbuf, make([]byte, len(prefix)+len(db.verbuf)+len(id)-len(db.auxbuf))...)

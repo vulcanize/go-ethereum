@@ -20,6 +20,10 @@ import (
 	"math/big"
 	"testing"
 
+	"github.com/ethereum/go-ethereum/ethdb/postgres"
+
+	"github.com/ethereum/go-ethereum/common/hexutil"
+
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/ethdb"
@@ -64,11 +68,21 @@ func TestLookupStorage(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			db := NewMemoryDatabase()
+			db, pdb, err := postgres.TestDatabase()
+			if err != nil {
+				t.Fatal(err)
+			}
+			defer postgres.ResetTestDB(pdb)
 
-			tx1 := types.NewTransaction(1, common.BytesToAddress([]byte{0x11}), big.NewInt(111), 1111, big.NewInt(11111), []byte{0x11, 0x11, 0x11})
-			tx2 := types.NewTransaction(2, common.BytesToAddress([]byte{0x22}), big.NewInt(222), 2222, big.NewInt(22222), []byte{0x22, 0x22, 0x22})
-			tx3 := types.NewTransaction(3, common.BytesToAddress([]byte{0x33}), big.NewInt(333), 3333, big.NewInt(33333), []byte{0x33, 0x33, 0x33})
+			sender1 := common.BytesToAddress([]byte{0x44})
+			sender2 := common.BytesToAddress([]byte{0x55})
+
+			l1RollupTxId1 := hexutil.Uint64(1)
+			l1RollupTxId2 := hexutil.Uint64(2)
+
+			tx1 := types.NewTransaction(1, common.BytesToAddress([]byte{0x11}), big.NewInt(111), 1111, big.NewInt(11111), []byte{0x11, 0x11, 0x11}, &sender1, &l1RollupTxId1, types.SighashEIP155)
+			tx2 := types.NewTransaction(2, common.BytesToAddress([]byte{0x22}), big.NewInt(222), 2222, big.NewInt(22222), []byte{0x22, 0x22, 0x22}, &sender2, &l1RollupTxId2, types.SighashEIP155)
+			tx3 := types.NewTransaction(3, common.BytesToAddress([]byte{0x33}), big.NewInt(333), 3333, big.NewInt(33333), []byte{0x33, 0x33, 0x33}, nil, &l1RollupTxId1, types.SighashEIP155)
 			txs := []*types.Transaction{tx1, tx2, tx3}
 
 			block := types.NewBlock(&types.Header{Number: big.NewInt(314)}, txs, nil, nil)

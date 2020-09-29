@@ -25,7 +25,10 @@ import (
 	"os"
 	"testing"
 
+	"github.com/ethereum/go-ethereum/ethdb/postgres"
+
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/params"
 	"github.com/ethereum/go-ethereum/rlp"
@@ -34,7 +37,11 @@ import (
 
 // Tests block header storage and retrieval operations.
 func TestHeaderStorage(t *testing.T) {
-	db := NewMemoryDatabase()
+	db, pdb, err := postgres.TestDatabase()
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer postgres.ResetTestDB(pdb)
 
 	// Create a test header to move around the database and make sure it's really new
 	header := &types.Header{Number: big.NewInt(42), Extra: []byte("test header")}
@@ -67,7 +74,11 @@ func TestHeaderStorage(t *testing.T) {
 
 // Tests block body storage and retrieval operations.
 func TestBodyStorage(t *testing.T) {
-	db := NewMemoryDatabase()
+	db, pdb, err := postgres.TestDatabase()
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer postgres.ResetTestDB(pdb)
 
 	// Create a test body to move around the database and make sure it's really new
 	body := &types.Body{Uncles: []*types.Header{{Extra: []byte("test header")}}}
@@ -105,7 +116,11 @@ func TestBodyStorage(t *testing.T) {
 
 // Tests block storage and retrieval operations.
 func TestBlockStorage(t *testing.T) {
-	db := NewMemoryDatabase()
+	db, pdb, err := postgres.TestDatabase()
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer postgres.ResetTestDB(pdb)
 
 	// Create a test block to move around the database and make sure it's really new
 	block := types.NewBlockWithHeader(&types.Header{
@@ -155,7 +170,11 @@ func TestBlockStorage(t *testing.T) {
 
 // Tests that partial block contents don't get reassembled into full blocks.
 func TestPartialBlockStorage(t *testing.T) {
-	db := NewMemoryDatabase()
+	db, pdb, err := postgres.TestDatabase()
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer postgres.ResetTestDB(pdb)
 	block := types.NewBlockWithHeader(&types.Header{
 		Extra:       []byte("test block"),
 		UncleHash:   types.EmptyUncleHash,
@@ -189,7 +208,11 @@ func TestPartialBlockStorage(t *testing.T) {
 
 // Tests block total difficulty storage and retrieval operations.
 func TestTdStorage(t *testing.T) {
-	db := NewMemoryDatabase()
+	db, pdb, err := postgres.TestDatabase()
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer postgres.ResetTestDB(pdb)
 
 	// Create a test TD to move around the database and make sure it's really new
 	hash, td := common.Hash{}, big.NewInt(314)
@@ -212,7 +235,11 @@ func TestTdStorage(t *testing.T) {
 
 // Tests that canonical numbers can be mapped to hashes and retrieved.
 func TestCanonicalMappingStorage(t *testing.T) {
-	db := NewMemoryDatabase()
+	db, pdb, err := postgres.TestDatabase()
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer postgres.ResetTestDB(pdb)
 
 	// Create a test canonical number and assinged hash to move around
 	hash, number := common.Hash{0: 0xff}, uint64(314)
@@ -235,7 +262,11 @@ func TestCanonicalMappingStorage(t *testing.T) {
 
 // Tests that head headers and head blocks can be assigned, individually.
 func TestHeadStorage(t *testing.T) {
-	db := NewMemoryDatabase()
+	db, pdb, err := postgres.TestDatabase()
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer postgres.ResetTestDB(pdb)
 
 	blockHead := types.NewBlockWithHeader(&types.Header{Extra: []byte("test block header")})
 	blockFull := types.NewBlockWithHeader(&types.Header{Extra: []byte("test block full")})
@@ -270,11 +301,15 @@ func TestHeadStorage(t *testing.T) {
 
 // Tests that receipts associated with a single block can be stored and retrieved.
 func TestBlockReceiptStorage(t *testing.T) {
-	db := NewMemoryDatabase()
+	db, pdb, err := postgres.TestDatabase()
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer postgres.ResetTestDB(pdb)
 
 	// Create a live block since we need metadata to reconstruct the receipt
-	tx1 := types.NewTransaction(1, common.HexToAddress("0x1"), big.NewInt(1), 1, big.NewInt(1), nil)
-	tx2 := types.NewTransaction(2, common.HexToAddress("0x2"), big.NewInt(2), 2, big.NewInt(2), nil)
+	tx1 := types.NewTransaction(1, common.HexToAddress("0x1"), big.NewInt(1), 1, big.NewInt(1), nil, nil, nil, types.SighashEIP155)
+	tx2 := types.NewTransaction(2, common.HexToAddress("0x2"), big.NewInt(2), 2, big.NewInt(2), nil, nil, nil, types.SighashEIP155)
 
 	body := &types.Body{Transactions: types.Transactions{tx1, tx2}}
 
@@ -422,5 +457,55 @@ func TestAncientStorage(t *testing.T) {
 	}
 	if blob := ReadTdRLP(db, fakeHash, number); len(blob) != 0 {
 		t.Fatalf("invalid td returned")
+	}
+}
+
+func TestBlockMetaStorage(t *testing.T) {
+	db, pdb, err := postgres.TestDatabase()
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer postgres.ResetTestDB(pdb)
+
+	tx1 := types.NewTransaction(1, common.HexToAddress("0x1"), big.NewInt(1), 1, big.NewInt(1), nil, nil, nil, types.SighashEIP155)
+
+	WriteTransactionMeta(db, tx1.Hash(), tx1.GetMeta())
+	meta := ReadTransactionMeta(db, tx1.Hash())
+
+	if meta.L1MessageSender != nil {
+		t.Fatalf("Could not recover L1MessageSender")
+	}
+	if meta.L1RollupTxId != nil {
+		t.Fatalf("Could not recover L1RollupTxId")
+	}
+
+	if meta.SignatureHashType != types.SighashEIP155 {
+		t.Fatalf("Could not recover sighash type")
+	}
+
+	DeleteTransactionMeta(db, tx1.Hash())
+	postDelete := ReadTransactionMeta(db, tx1.Hash())
+
+	if postDelete != nil {
+		t.Fatalf("Delete did not work")
+	}
+
+	addr := common.HexToAddress("095e7baea6a6c7c4c2dfeb977efac326af552d87")
+	txid := hexutil.Uint64(777)
+
+	tx2 := types.NewTransaction(2, common.HexToAddress("0x02"), big.NewInt(2), 2, big.NewInt(2), nil, &addr, &txid, types.SighashEthSign)
+
+	WriteTransactionMeta(db, tx2.Hash(), tx2.GetMeta())
+	meta2 := ReadTransactionMeta(db, tx2.Hash())
+
+	if !bytes.Equal(meta2.L1MessageSender.Bytes(), addr.Bytes()) {
+		t.Fatalf("Could not recover L1MessageSender")
+	}
+
+	if *meta2.L1RollupTxId != txid {
+		t.Fatalf("Could not recover L1RollupTxId")
+	}
+	if meta2.SignatureHashType != types.SighashEthSign {
+		t.Fatalf("Could not recover sighash type")
 	}
 }

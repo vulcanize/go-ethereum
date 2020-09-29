@@ -26,8 +26,8 @@ import (
 
 // The fields below define the low level database schema prefixing.
 var (
-	// KeyDelineation is used to delineate the key prefixes and suffixes
-	KeyDelineation = []byte("-fix-")
+	// prefixDelineation is used to delineate the key prefixes
+	prefixDelineation = []byte("-fix-")
 
 	// NumberDelineation is used to delineate the block number encoded in a key
 	NumberDelineation = []byte("-nmb-")
@@ -111,49 +111,49 @@ func encodeBlockNumber(number uint64) []byte {
 	return enc
 }
 
-// headerKeyPrefix = headerPrefix + KeyDelineation + num (uint64 big endian) + NumberDelineation
+// headerKeyPrefix = headerPrefix + prefixDelineation + num (uint64 big endian) + NumberDelineation
 func headerKeyPrefix(number uint64) []byte {
-	return append(append(append(HeaderPrefix, KeyDelineation...), encodeBlockNumber(number)...), NumberDelineation...)
+	return append(append(append(HeaderPrefix, prefixDelineation...), encodeBlockNumber(number)...), NumberDelineation...)
 }
 
-// headerKey = HeaderPrefix + KeyDelineation + num (uint64 big endian) + NumberDelineation + hash
+// headerKey = HeaderPrefix + prefixDelineation + num (uint64 big endian) + NumberDelineation + hash
 func headerKey(number uint64, hash common.Hash) []byte {
-	return append(append(append(append(HeaderPrefix, KeyDelineation...), encodeBlockNumber(number)...), NumberDelineation...), hash.Bytes()...)
+	return append(append(append(append(HeaderPrefix, prefixDelineation...), encodeBlockNumber(number)...), NumberDelineation...), hash.Bytes()...)
 }
 
-// headerTDKey = HeaderPrefix + KeyDelineation + num (uint64 big endian) + NumberDelineation + hash + KeyDelineation + headerTDSuffix
+// headerTDKey = HeaderPrefix + prefixDelineation + num (uint64 big endian) + NumberDelineation + hash + headerTDSuffix
 func headerTDKey(number uint64, hash common.Hash) []byte {
-	return append(append(headerKey(number, hash), KeyDelineation...), headerTDSuffix...)
+	return append(headerKey(number, hash), headerTDSuffix...)
 }
 
-// headerHashKey = HeaderPrefix + KeyDelineation + num (uint64 big endian) + NumberDelineation + KeyDelineation + headerHashSuffix
+// headerHashKey = HeaderPrefix + prefixDelineation + num (uint64 big endian) + NumberDelineation + headerHashSuffix
 func headerHashKey(number uint64) []byte {
-	return append(append(append(append(append(HeaderPrefix, KeyDelineation...), encodeBlockNumber(number)...), NumberDelineation...), KeyDelineation...), headerHashSuffix...)
+	return append(append(append(append(HeaderPrefix, prefixDelineation...), encodeBlockNumber(number)...), NumberDelineation...), headerHashSuffix...)
 }
 
-// headerNumberKey = headerNumberPrefix + KeyDelineation + hash
+// headerNumberKey = headerNumberPrefix + prefixDelineation + hash
 func headerNumberKey(hash common.Hash) []byte {
-	return append(append(headerNumberPrefix, KeyDelineation...), hash.Bytes()...)
+	return append(append(headerNumberPrefix, prefixDelineation...), hash.Bytes()...)
 }
 
-// blockBodyKey = blockBodyPrefix + KeyDelineation + num (uint64 big endian) + NumberDelineation + hash
+// blockBodyKey = blockBodyPrefix + prefixDelineation + num (uint64 big endian) + NumberDelineation + hash
 func blockBodyKey(number uint64, hash common.Hash) []byte {
-	return append(append(append(append(blockBodyPrefix, KeyDelineation...), encodeBlockNumber(number)...), NumberDelineation...), hash.Bytes()...)
+	return append(append(append(append(blockBodyPrefix, prefixDelineation...), encodeBlockNumber(number)...), NumberDelineation...), hash.Bytes()...)
 }
 
-// blockReceiptsKey = blockReceiptsPrefix + KeyDelineation + num (uint64 big endian) + NumberDelineation + hash
+// blockReceiptsKey = blockReceiptsPrefix + prefixDelineation + num (uint64 big endian) + NumberDelineation + hash
 func blockReceiptsKey(number uint64, hash common.Hash) []byte {
-	return append(append(append(append(blockReceiptsPrefix, KeyDelineation...), encodeBlockNumber(number)...), NumberDelineation...), hash.Bytes()...)
+	return append(append(append(append(blockReceiptsPrefix, prefixDelineation...), encodeBlockNumber(number)...), NumberDelineation...), hash.Bytes()...)
 }
 
-// txLookupKey = txLookupPrefix + KeyDelineation + hash
+// txLookupKey = txLookupPrefix + prefixDelineation + hash
 func txLookupKey(hash common.Hash) []byte {
-	return append(append(txLookupPrefix, KeyDelineation...), hash.Bytes()...)
+	return append(append(txLookupPrefix, prefixDelineation...), hash.Bytes()...)
 }
 
-// bloomBitsKey = bloomBitsPrefix + KeyDelineation + bit (uint16 big endian) + section (uint64 big endian) + hash
+// bloomBitsKey = bloomBitsPrefix + prefixDelineation + bit (uint16 big endian) + section (uint64 big endian) + hash
 func bloomBitsKey(bit uint, section uint64, hash common.Hash) []byte {
-	key := append(append(append(bloomBitsPrefix, KeyDelineation...), make([]byte, 10)...), hash.Bytes()...)
+	key := append(append(append(bloomBitsPrefix, prefixDelineation...), make([]byte, 10)...), hash.Bytes()...)
 
 	binary.BigEndian.PutUint16(key[2:], uint16(bit))
 	binary.BigEndian.PutUint64(key[4:], section)
@@ -161,12 +161,12 @@ func bloomBitsKey(bit uint, section uint64, hash common.Hash) []byte {
 	return key
 }
 
-// preimageKey = preimagePrefix + KeyDelineation + hash
+// preimageKey = preimagePrefix + prefixDelineation + hash
 func preimageKey(hash common.Hash) []byte {
-	return append(append(PreimagePrefix, KeyDelineation...), hash.Bytes()...)
+	return append(append(PreimagePrefix, prefixDelineation...), hash.Bytes()...)
 }
 
-// configKey = configPrefix + KeyDelineation + hash
+// configKey = configPrefix + prefixDelineation + hash
 func configKey(hash common.Hash) []byte {
-	return append(append(configPrefix, KeyDelineation...), hash.Bytes()...)
+	return append(append(configPrefix, prefixDelineation...), hash.Bytes()...)
 }
