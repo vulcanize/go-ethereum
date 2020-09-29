@@ -1,32 +1,32 @@
-// VulcanizeDB
-// Copyright © 2019 Vulcanize
-
-// This program is free software: you can redistribute it and/or modify
-// it under the terms of the GNU Affero General Public License as published by
+// Copyright 2020 The go-ethereum Authors
+// This file is part of go-ethereum.
+//
+// go-ethereum is free software: you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
 // the Free Software Foundation, either version 3 of the License, or
 // (at your option) any later version.
-
-// This program is distributed in the hope that it will be useful,
+//
+// go-ethereum is distributed in the hope that it will be useful,
 // but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-// GNU Affero General Public License for more details.
-
-// You should have received a copy of the GNU Affero General Public License
-// along with this program.  If not, see <http://www.gnu.org/licenses/>.
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+// GNU General Public License for more details.
+//
+// You should have received a copy of the GNU General Public License
+// along with go-ethereum. If not, see <http://www.gnu.org/licenses/>.
 
 package postgres
 
 import (
 	"fmt"
 	"time"
-
-	"github.com/jmoiron/sqlx"
 )
 
-var (
-	defaultMaxDBConnections   = 1024
-	defaultMaxIdleConnections = 16
-)
+var TestPostgresConfig = Config{
+	Database: "optimism_testing",
+	Hostname: "localhost",
+	Port:     5432,
+	User:     "postgres",
+}
 
 // Config holds Postgres connection pool configuration params
 type Config struct {
@@ -39,11 +39,11 @@ type Config struct {
 	// Optimization parameters
 	MaxOpen     int
 	MaxIdle     int
-	MaxLifetime int
+	MaxLifetime time.Duration
 }
 
 // NewConfig returns a new config struct from provided params
-func NewConfig(database, hostname, password, user string, port, maxOpen, maxIdle, maxLifetime int) *Config {
+func NewConfig(database, hostname, password, user string, port, maxOpen, maxIdle int, maxLifetime time.Duration) *Config {
 	return &Config{
 		Database:    database,
 		Hostname:    hostname,
@@ -67,27 +67,4 @@ func DbConnectionString(config *Config) string {
 			config.User, config.Hostname, config.Port, config.Database)
 	}
 	return fmt.Sprintf("postgresql://%s:%d/%s?sslmode=disable", config.Hostname, config.Port, config.Database)
-}
-
-// NewDB opens and returns a new Postgres connection pool using the provided config
-func NewDB(c *Config) (*sqlx.DB, error) {
-	connectStr := DbConnectionString(c)
-	db, err := sqlx.Connect("postgres", connectStr)
-	if err != nil {
-		return nil, err
-	}
-	if c.MaxIdle > 0 {
-		db.SetMaxIdleConns(c.MaxIdle)
-	} else {
-		db.SetMaxIdleConns(defaultMaxIdleConnections)
-	}
-	if c.MaxOpen > 0 {
-		db.SetMaxOpenConns(c.MaxOpen)
-	} else {
-		db.SetMaxOpenConns(defaultMaxDBConnections)
-	}
-	if c.MaxLifetime > 0 {
-		db.SetConnMaxLifetime(time.Duration(c.MaxLifetime) * time.Second)
-	}
-	return db, nil
 }

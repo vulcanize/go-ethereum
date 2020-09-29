@@ -14,16 +14,27 @@
 // You should have received a copy of the GNU General Public License
 // along with go-ethereum. If not, see <http://www.gnu.org/licenses/>.
 
-package postgres_test
+package postgres
 
 import (
-	"testing"
-
-	. "github.com/onsi/ginkgo"
-	. "github.com/onsi/gomega"
+	"github.com/jmoiron/sqlx"
+	_ "github.com/lib/pq" //postgres driver
 )
 
-func TestPGIPFSETHDB(t *testing.T) {
-	RegisterFailHandler(Fail)
-	RunSpecs(t, "PG-IPFS ethdb test")
+func NewDB(conf *Config) (*sqlx.DB, error) {
+	connectString := DbConnectionString(conf)
+	db, err := sqlx.Connect("postgres", connectString)
+	if err != nil {
+		return nil, err
+	}
+	if conf.MaxOpen > 0 {
+		db.SetMaxOpenConns(conf.MaxOpen)
+	}
+	if conf.MaxIdle > 0 {
+		db.SetMaxIdleConns(conf.MaxIdle)
+	}
+	if conf.MaxLifetime > 0 {
+		db.SetConnMaxLifetime(conf.MaxLifetime)
+	}
+	return db, nil
 }

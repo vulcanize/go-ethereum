@@ -1,18 +1,18 @@
-// VulcanizeDB
-// Copyright © 2020 Vulcanize
-
-// This program is free software: you can redistribute it and/or modify
-// it under the terms of the GNU Affero General Public License as published by
+// Copyright 2020 The go-ethereum Authors
+// This file is part of go-ethereum.
+//
+// go-ethereum is free software: you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
 // the Free Software Foundation, either version 3 of the License, or
 // (at your option) any later version.
-
-// This program is distributed in the hope that it will be useful,
+//
+// go-ethereum is distributed in the hope that it will be useful,
 // but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-// GNU Affero General Public License for more details.
-
-// You should have received a copy of the GNU Affero General Public License
-// along with this program.  If not, see <http://www.gnu.org/licenses/>.
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+// GNU General Public License for more details.
+//
+// You should have received a copy of the GNU General Public License
+// along with go-ethereum. If not, see <http://www.gnu.org/licenses/>.
 
 package postgres_test
 
@@ -20,7 +20,7 @@ import (
 	"database/sql"
 
 	"github.com/ethereum/go-ethereum/ethdb"
-	pgipfsethdb "github.com/ethereum/go-ethereum/ethdb/postgres"
+	"github.com/ethereum/go-ethereum/ethdb/postgres"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 )
@@ -34,12 +34,12 @@ var (
 	testEthKey4         = []byte{'\x01', '\x0e'}
 	testEthKey5         = []byte{'\x01', '\x02', '\x01'}
 	testEthKey6         = []byte{'\x01', '\x0e', '\x01'}
-	prefixedTestEthKey1 = append(append(testPrefix, pgipfsethdb.KeyDelineation...), testEthKey1...)
-	prefixedTestEthKey2 = append(append(testPrefix, pgipfsethdb.KeyDelineation...), testEthKey2...)
-	prefixedTestEthKey3 = append(append(testPrefix, pgipfsethdb.KeyDelineation...), testEthKey3...)
-	prefixedTestEthKey4 = append(append(testPrefix, pgipfsethdb.KeyDelineation...), testEthKey4...)
-	prefixedTestEthKey5 = append(append(testPrefix, pgipfsethdb.KeyDelineation...), testEthKey5...)
-	prefixedTestEthKey6 = append(append(testPrefix, pgipfsethdb.KeyDelineation...), testEthKey6...)
+	prefixedTestEthKey1 = append(append(testPrefix, postgres.PrefixDelineation...), testEthKey1...)
+	prefixedTestEthKey2 = append(append(testPrefix, postgres.PrefixDelineation...), testEthKey2...)
+	prefixedTestEthKey3 = append(append(testPrefix, postgres.PrefixDelineation...), testEthKey3...)
+	prefixedTestEthKey4 = append(append(testPrefix, postgres.PrefixDelineation...), testEthKey4...)
+	prefixedTestEthKey5 = append(append(testPrefix, postgres.PrefixDelineation...), testEthKey5...)
+	prefixedTestEthKey6 = append(append(testPrefix, postgres.PrefixDelineation...), testEthKey6...)
 	mockValue1          = []byte{1}
 	mockValue2          = []byte{2}
 	mockValue3          = []byte{3}
@@ -50,9 +50,9 @@ var (
 
 var _ = Describe("Iterator", func() {
 	BeforeEach(func() {
-		db, err = pgipfsethdb.TestDB()
+		db, err = postgres.TestDB()
 		Expect(err).ToNot(HaveOccurred())
-		database = pgipfsethdb.NewDatabase(db)
+		database = postgres.NewDatabase(db)
 		// non-prefixed entries
 		err = database.Put(testEthKey1, mockValue1)
 		Expect(err).ToNot(HaveOccurred())
@@ -81,7 +81,7 @@ var _ = Describe("Iterator", func() {
 		Expect(err).ToNot(HaveOccurred())
 	})
 	AfterEach(func() {
-		err = pgipfsethdb.ResetTestDB(db)
+		err = postgres.ResetTestDB(db)
 		Expect(err).ToNot(HaveOccurred())
 	})
 

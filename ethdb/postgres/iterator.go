@@ -1,18 +1,18 @@
-// VulcanizeDB
-// Copyright © 2020 Vulcanize
-
-// This program is free software: you can redistribute it and/or modify
-// it under the terms of the GNU Affero General Public License as published by
+// Copyright 2020 The go-ethereum Authors
+// This file is part of go-ethereum.
+//
+// go-ethereum is free software: you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
 // the Free Software Foundation, either version 3 of the License, or
 // (at your option) any later version.
-
-// This program is distributed in the hope that it will be useful,
+//
+// go-ethereum is distributed in the hope that it will be useful,
 // but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-// GNU Affero General Public License for more details.
-
-// You should have received a copy of the GNU Affero General Public License
-// along with this program.  If not, see <http://www.gnu.org/licenses/>.
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+// GNU General Public License for more details.
+//
+// You should have received a copy of the GNU General Public License
+// along with go-ethereum. If not, see <http://www.gnu.org/licenses/>.
 
 package postgres
 
@@ -22,22 +22,23 @@ import (
 )
 
 const (
-	initPgStr = `SELECT eth_key, data FROM public.blocks
-				INNER JOIN eth.key_preimages ON (ipfs_key = key)
+	initPgStr = `SELECT eth_key, eth_data
+				FROM eth.kvstore 
 				WHERE eth_key = $1`
-	nextPgStr = `SELECT eth_key, data FROM public.blocks
-				INNER JOIN eth.key_preimages ON (ipfs_key = key)
+	nextPgStr = `SELECT eth_key, eth_data
+				FROM eth.kvstore
 				WHERE eth_key > $1
 				ORDER BY eth_key LIMIT 1`
-	nextPgStrWithPrefix = `SELECT eth_key, data FROM public.blocks
-				INNER JOIN eth.key_preimages ON (ipfs_key = key)
-				WHERE eth_key > $1 AND prefix = $2 
+	nextPgStrWithPrefix = `SELECT eth_key, eth_data
+				FROM eth.kvstore
+				WHERE eth_key > $1
+				AND prefix = $2 
 				ORDER BY eth_key LIMIT 1`
 )
 
 type nextModel struct {
 	Key   []byte `db:"eth_key"`
-	Value []byte `db:"data"`
+	Value []byte `db:"eth_data"`
 }
 
 // Iterator is the type that satisfies the ethdb.Iterator interface for PG-IPFS Ethereum data using a direct Postgres connection
