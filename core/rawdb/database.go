@@ -95,6 +95,11 @@ func (db *nofreezedb) Sync() error {
 	return errNotSupported
 }
 
+// ExposeDB exposes the underlying db
+func (db *nofreezedb) ExposeDB() interface{} {
+	return db.KeyValueStore.ExposeDB()
+}
+
 // NewDatabase creates a high level database on top of a given key-value data
 // store without a freezer moving immutable chain segments into cold storage.
 func NewDatabase(db ethdb.KeyValueStore) ethdb.Database {
@@ -228,7 +233,10 @@ func NewDatabaseWithCleaner(conf *postgres.Config) (ethdb.Database, error) {
 		return nil, err
 	}
 	pgethdb := postgres.NewDatabase(db)
-	cleaner := NewDBCleaner(pgethdb)
+	cleaner, err := NewDBCleaner(pgethdb)
+	if err != nil {
+		return nil, err
+	}
 	go cleaner.clean()
 	return pgethdb, nil
 }
@@ -281,11 +289,11 @@ func InspectDatabase(db ethdb.Database) error {
 		)
 		total += size
 		switch {
-		case bytes.HasPrefix(key, HeaderPrefix) && bytes.HasSuffix(key, headerTDSuffix):
+		case bytes.HasPrefix(key,  headerPrefix) && bytes.HasSuffix(key, headerTDSuffix):
 			tdSize += size
-		case bytes.HasPrefix(key, HeaderPrefix) && bytes.HasSuffix(key, headerHashSuffix):
+		case bytes.HasPrefix(key,  headerPrefix) && bytes.HasSuffix(key, headerHashSuffix):
 			numHashPairing += size
-		case bytes.HasPrefix(key, HeaderPrefix) && len(key) == (len(HeaderPrefix)+8+common.HashLength):
+		case bytes.HasPrefix(key,  headerPrefix) && len(key) == (len( headerPrefix)+8+common.HashLength):
 			headerSize += size
 		case bytes.HasPrefix(key, headerNumberPrefix) && len(key) == (len(headerNumberPrefix)+common.HashLength):
 			hashNumPairing += size
@@ -295,7 +303,7 @@ func InspectDatabase(db ethdb.Database) error {
 			receiptSize += size
 		case bytes.HasPrefix(key, txLookupPrefix) && len(key) == (len(txLookupPrefix)+common.HashLength):
 			txlookupSize += size
-		case bytes.HasPrefix(key, PreimagePrefix) && len(key) == (len(PreimagePrefix)+common.HashLength):
+		case bytes.HasPrefix(key, preimagePrefix) && len(key) == (len(preimagePrefix)+common.HashLength):
 			preimageSize += size
 		case bytes.HasPrefix(key, bloomBitsPrefix) && len(key) == (len(bloomBitsPrefix)+10+common.HashLength):
 			bloomBitsSize += size
