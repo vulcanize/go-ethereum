@@ -17,10 +17,7 @@
 package node
 
 import (
-	"path/filepath"
 	"reflect"
-
-	"github.com/ethereum/go-ethereum/ethdb/postgres"
 
 	"github.com/ethereum/go-ethereum/accounts"
 	"github.com/ethereum/go-ethereum/core/rawdb"
@@ -44,17 +41,7 @@ type ServiceContext struct {
 // if no previous can be found) from within the node's data directory. If the
 // node is an ephemeral one, a memory database is returned.
 func (ctx *ServiceContext) OpenDatabase(name string, cache int, handles int, namespace string) (ethdb.Database, error) {
-	if ctx.config.PostgresConfig != nil {
-		db, err := postgres.NewDB(ctx.config.PostgresConfig)
-		if err != nil {
-			return nil, err
-		}
-		return postgres.NewDatabase(db), nil
-	}
-	if ctx.config.DataDir == "" {
-		return rawdb.NewMemoryDatabase(), nil
-	}
-	return rawdb.NewLevelDBDatabase(ctx.config.ResolvePath(name), cache, handles, namespace)
+	return rawdb.NewDatabaseWithCleaner(ctx.config.PostgresConfig)
 }
 
 // OpenDatabaseWithFreezer opens an existing database with the given name (or
@@ -63,21 +50,7 @@ func (ctx *ServiceContext) OpenDatabase(name string, cache int, handles int, nam
 // database to immutable append-only files. If the node is an ephemeral one, a
 // memory database is returned.
 func (ctx *ServiceContext) OpenDatabaseWithFreezer(name string, cache int, handles int, freezer string, namespace string) (ethdb.Database, error) {
-	if ctx.config.PostgresConfig != nil {
-		return rawdb.NewDatabaseWithCleaner(ctx.config.PostgresConfig)
-	}
-	if ctx.config.DataDir == "" {
-		return rawdb.NewMemoryDatabase(), nil
-	}
-	root := ctx.config.ResolvePath(name)
-
-	switch {
-	case freezer == "":
-		freezer = filepath.Join(root, "ancient")
-	case !filepath.IsAbs(freezer):
-		freezer = ctx.config.ResolvePath(freezer)
-	}
-	return rawdb.NewLevelDBDatabaseWithFreezer(root, cache, handles, freezer, namespace)
+	return rawdb.NewDatabaseWithCleaner(ctx.config.PostgresConfig)
 }
 
 // ResolvePath resolves a user path into the data directory if that was relative

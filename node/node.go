@@ -26,8 +26,6 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/ethereum/go-ethereum/ethdb/postgres"
-
 	"github.com/ethereum/go-ethereum/accounts"
 	"github.com/ethereum/go-ethereum/core/rawdb"
 	"github.com/ethereum/go-ethereum/ethdb"
@@ -609,17 +607,7 @@ func (n *Node) EventMux() *event.TypeMux {
 // previous can be found) from within the node's instance directory. If the node is
 // ephemeral, a memory database is returned.
 func (n *Node) OpenDatabase(name string, cache, handles int, namespace string) (ethdb.Database, error) {
-	if n.config.PostgresConfig != nil {
-		db, err := postgres.NewDB(n.config.PostgresConfig)
-		if err != nil {
-			return nil, err
-		}
-		return postgres.NewDatabase(db), nil
-	}
-	if n.config.DataDir == "" {
-		return rawdb.NewMemoryDatabase(), nil
-	}
-	return rawdb.NewLevelDBDatabase(n.config.ResolvePath(name), cache, handles, namespace)
+	return rawdb.NewDatabaseWithCleaner(n.config.PostgresConfig)
 }
 
 // OpenDatabaseWithFreezer opens an existing database with the given name (or
@@ -628,21 +616,7 @@ func (n *Node) OpenDatabase(name string, cache, handles int, namespace string) (
 // database to immutable append-only files. If the node is an ephemeral one, a
 // memory database is returned.
 func (n *Node) OpenDatabaseWithFreezer(name string, cache, handles int, freezer, namespace string) (ethdb.Database, error) {
-	if n.config.PostgresConfig != nil {
-		rawdb.NewDatabaseWithCleaner(n.config.PostgresConfig)
-	}
-	if n.config.DataDir == "" {
-		return rawdb.NewMemoryDatabase(), nil
-	}
-	root := n.config.ResolvePath(name)
-
-	switch {
-	case freezer == "":
-		freezer = filepath.Join(root, "ancient")
-	case !filepath.IsAbs(freezer):
-		freezer = n.config.ResolvePath(freezer)
-	}
-	return rawdb.NewLevelDBDatabaseWithFreezer(root, cache, handles, freezer, namespace)
+	return rawdb.NewDatabaseWithCleaner(n.config.PostgresConfig)
 }
 
 // ResolvePath returns the absolute path of a resource in the instance directory.

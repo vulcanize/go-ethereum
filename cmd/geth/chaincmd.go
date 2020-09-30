@@ -33,10 +33,7 @@ import (
 	"github.com/ethereum/go-ethereum/core/rawdb"
 	"github.com/ethereum/go-ethereum/core/state"
 	"github.com/ethereum/go-ethereum/core/types"
-	"github.com/ethereum/go-ethereum/eth/downloader"
-	"github.com/ethereum/go-ethereum/event"
 	"github.com/ethereum/go-ethereum/log"
-	"github.com/ethereum/go-ethereum/trie"
 	"gopkg.in/urfave/cli.v1"
 )
 
@@ -388,6 +385,7 @@ func exportPreimages(ctx *cli.Context) error {
 }
 
 func copyDb(ctx *cli.Context) error {
+	/*
 	// Ensure we have a source chain directory to copy
 	if len(ctx.Args()) < 1 {
 		utils.Fatalf("Source chaindata directory path argument missing")
@@ -440,6 +438,8 @@ func copyDb(ctx *cli.Context) error {
 		utils.Fatalf("Compaction failed: %v", err)
 	}
 	fmt.Printf("Compaction done in %v.\n\n", time.Since(start))
+	return nil
+	*/
 	return nil
 }
 
