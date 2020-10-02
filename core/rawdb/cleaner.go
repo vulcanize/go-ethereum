@@ -22,9 +22,9 @@ const (
 )
 
 const (
-	deleteHeadersPgStr = "DELETE FROM eth.headers WHERE height BETWEEN $1 AND $2"
-	getTailHeightPgStr = "SELECT height FROM eth.headers WHERE height > 0 ORDER BY height ASC LIMIT 1"
-	getHeadHeightPgStr = "SELECT height FROM eth.headers ORDER BY height DESC LIMIT 1"
+	deleteHeadersPgStr = "DELETE FROM ethdb.headers WHERE height BETWEEN $1 AND $2"
+	getTailHeightPgStr = "SELECT height FROM ethdb.headers WHERE height > 0 ORDER BY height ASC LIMIT 1"
+	getHeadHeightPgStr = "SELECT height FROM ethdb.headers ORDER BY height DESC LIMIT 1"
 )
 
 type cleaner struct {
