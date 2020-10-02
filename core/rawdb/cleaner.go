@@ -79,6 +79,7 @@ func (c *cleaner) clean() {
 			if err != nil {
 				log.Error("Cleaner unable to remove data", "error", err)
 			}
+			c.tail = rangeEnd + 1
 		}
 	}
 }
