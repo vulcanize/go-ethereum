@@ -131,3 +131,8 @@ func (api *PublicStateDiffAPI) StreamCodeAndCodeHash(ctx context.Context, blockN
 
 	return rpcSub, nil
 }
+
+// WriteStateDiffAt writes a state diff object directly to DB at the specific blockheight
+func (api *PublicStateDiffAPI) WriteStateDiffAt(ctx context.Context, blockNumber uint64, params Params) error {
+	return api.sds.WriteStateDiffAt(blockNumber, params)
+}

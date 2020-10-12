@@ -147,6 +147,9 @@ var (
 		utils.EWASMInterpreterFlag,
 		utils.EVMInterpreterFlag,
 		utils.StateDiffFlag,
+		utils.StateDiffDBFlag,
+		utils.StateDiffDBNodeIDFlag,
+		utils.StateDiffDBClientNameFlag,
 		configFileFlag,
 	}
 

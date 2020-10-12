@@ -20,6 +20,7 @@ import (
 	"bytes"
 	"fmt"
 	"math/big"
+	"strconv"
 	"sync"
 	"sync/atomic"
 
@@ -28,6 +29,7 @@ import (
 	"github.com/ethereum/go-ethereum/core/state"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/crypto"
+	"github.com/ethereum/go-ethereum/eth"
 	"github.com/ethereum/go-ethereum/event"
 	"github.com/ethereum/go-ethereum/log"
 	"github.com/ethereum/go-ethereum/node"
@@ -35,6 +37,11 @@ import (
 	"github.com/ethereum/go-ethereum/rlp"
 	"github.com/ethereum/go-ethereum/rpc"
 	"github.com/ethereum/go-ethereum/trie"
+
+	ind "github.com/ethereum/go-ethereum/statediff/indexer"
+	nodeinfo "github.com/ethereum/go-ethereum/statediff/indexer/node"
+	"github.com/ethereum/go-ethereum/statediff/indexer/postgres"
+	sdtypes "github.com/ethereum/go-ethereum/statediff/types"
 )
 
 const chainEventChanSize = 20000
@@ -65,6 +72,8 @@ type IService interface {
 	StateTrieAt(blockNumber uint64, params Params) (*Payload, error)
 	// Method to stream out all code and codehash pairs
 	StreamCodeAndCodeHash(blockNumber uint64, outChan chan<- CodeAndCodeHash, quitChan chan<- bool)
+	// Method to write state diff object directly to DB
+	WriteStateDiffAt(blockNumber uint64, params Params) error
 }
 
 // Service is the underlying struct for the state diffing service
@@ -85,10 +94,32 @@ type Service struct {
 	lastBlock *types.Block
 	// Whether or not we have any subscribers; only if we do, do we processes state diffs
 	subscribers int32
+	// Interface for publishing statediffs as PG-IPLD objects
+	indexer ind.Indexer
 }
 
 // NewStateDiffService creates a new statediff.Service
-func NewStateDiffService(blockChain *core.BlockChain) (*Service, error) {
+func NewStateDiffService(ethServ *eth.Ethereum, dbParams *[3]string) (*Service, error) {
+	blockChain := ethServ.BlockChain()
+	var indexer ind.Indexer
+	if dbParams != nil {
+		info := nodeinfo.Info{
+			GenesisBlock: blockChain.Genesis().Hash().Hex(),
+			NetworkID:    strconv.FormatUint(ethServ.NetVersion(), 10),
+			// ChainID:      blockChain.Config().ChainID.String(),
+			ChainID:    blockChain.Config().ChainID.Uint64(),
+			ID:         dbParams[1],
+			ClientName: dbParams[2],
+		}
+
+		// TODO: pass max idle, open, lifetime?
+		db, err := postgres.NewDB(dbParams[0], postgres.ConnectionConfig{}, info)
+		if err != nil {
+			return nil, err
+		}
+		indexer = ind.NewStateDiffIndexer(blockChain.Config(), db)
+	}
+
 	return &Service{
 		Mutex:             sync.Mutex{},
 		BlockChain:        blockChain,
@@ -96,6 +127,7 @@ func NewStateDiffService(blockChain *core.BlockChain) (*Service, error) {
 		QuitChan:          make(chan bool),
 		Subscriptions:     make(map[common.Hash]map[rpc.ID]Subscription),
 		SubscriptionTypes: make(map[common.Hash]Params),
+		indexer:           indexer,
 	}, nil
 }
 
@@ -404,4 +436,48 @@ func (sds *Service) StreamCodeAndCodeHash(blockNumber uint64, outChan chan<- Cod
 			}
 		}
 	}()
+}
+
+// WriteStateDiffAt writes a state diff at the specific blockheight directly to the database
+// This operation cannot be performed back past the point of db pruning; it requires an archival node
+// for historical data
+func (sds *Service) WriteStateDiffAt(blockNumber uint64, params Params) error {
+	log.Info(fmt.Sprintf("writing state diff at block %d", blockNumber))
+	currentBlock := sds.BlockChain.GetBlockByNumber(blockNumber)
+	parentRoot := common.Hash{}
+	if blockNumber != 0 {
+		parentBlock := sds.BlockChain.GetBlockByHash(currentBlock.ParentHash())
+		parentRoot = parentBlock.Root()
+	}
+	return sds.writeStateDiff(currentBlock, parentRoot, params)
+}
+
+// Writes a state diff from the current block, parent state root, and provided params
+func (sds *Service) writeStateDiff(block *types.Block, parentRoot common.Hash, params Params) error {
+	var totalDifficulty *big.Int
+	var receipts types.Receipts
+	if params.IncludeTD {
+		totalDifficulty = sds.BlockChain.GetTdByHash(block.Hash())
+	}
+	if params.IncludeReceipts {
+		receipts = sds.BlockChain.GetReceiptsByHash(block.Hash())
+	}
+	tx, err := sds.indexer.PushBlock(block, receipts, totalDifficulty)
+	// defer handling of commit/rollback for any return case
+	defer tx.Close()
+	output := func(node sdtypes.StateNode) error {
+		return sds.indexer.PushStateNode(tx, node)
+		return nil
+	}
+	_, err = sds.Builder.WriteStateDiffObject(StateRoots{
+		NewStateRoot: block.Root(),
+		OldStateRoot: parentRoot,
+	}, params, output)
+
+	// allow dereferencing of parent, keep current locked as it should be the next parent
+	sds.BlockChain.UnlockTrie(parentRoot)
+	if err != nil {
+		return err
+	}
+	return nil
 }
