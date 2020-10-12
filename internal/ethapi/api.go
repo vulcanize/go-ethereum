@@ -879,7 +879,12 @@ func (s *PublicBlockChainAPI) Call(ctx context.Context, args CallArgs, blockNrOr
 	if overrides != nil {
 		accounts = *overrides
 	}
-	result, _, _, err := DoCall(ctx, s.b, args, blockNrOrHash, accounts, vm.Config{}, 5*time.Second, s.b.RPCGasCap())
+	timeout := 5 * time.Second
+	d, ok := ctx.Deadline()
+	if ok {
+		timeout = d.Sub(time.Now())
+	}
+	result, _, _, err := DoCall(ctx, s.b, args, blockNrOrHash, accounts, vm.Config{}, timeout, s.b.RPCGasCap())
 	return (hexutil.Bytes)(result), err
 }
 
