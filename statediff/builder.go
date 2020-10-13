@@ -36,6 +36,7 @@ var (
 	nullHashBytes     = common.Hex2Bytes("0000000000000000000000000000000000000000000000000000000000000000")
 	emptyNode, _      = rlp.EncodeToBytes([]byte{})
 	emptyContractRoot = crypto.Keccak256Hash(emptyNode)
+	nullCodeHash      = crypto.Keccak256Hash([]byte{}).Bytes()
 )
 
 // Builder interface exposes the method for building a state diff between two blocks
@@ -62,19 +63,21 @@ func (sdb *builder) BuildStateTrieObject(current *types.Block) (StateObject, err
 		return StateObject{}, fmt.Errorf("error creating trie for block %d: %v", current.Number(), err)
 	}
 	it := currentTrie.NodeIterator([]byte{})
-	stateNodes, err := sdb.buildStateTrie(it)
+	stateNodes, codeAndCodeHashes, err := sdb.buildStateTrie(it)
 	if err != nil {
 		return StateObject{}, fmt.Errorf("error collecting state nodes for block %d: %v", current.Number(), err)
 	}
 	return StateObject{
-		BlockNumber: current.Number(),
-		BlockHash:   current.Hash(),
-		Nodes:       stateNodes,
+		BlockNumber:       current.Number(),
+		BlockHash:         current.Hash(),
+		Nodes:             stateNodes,
+		CodeAndCodeHashes: codeAndCodeHashes,
 	}, nil
 }
 
-func (sdb *builder) buildStateTrie(it trie.NodeIterator) ([]StateNode, error) {
+func (sdb *builder) buildStateTrie(it trie.NodeIterator) ([]StateNode, []CodeAndCodeHash, error) {
 	stateNodes := make([]StateNode, 0)
+	codeAndCodeHashes := make([]CodeAndCodeHash, 0)
 	for it.Next(true) {
 		// skip value nodes
 		if it.Leaf() {
@@ -87,37 +90,51 @@ func (sdb *builder) buildStateTrie(it trie.NodeIterator) ([]StateNode, error) {
 		copy(nodePath, it.Path())
 		node, err := sdb.stateCache.TrieDB().Node(it.Hash())
 		if err != nil {
-			return nil, err
+			return nil, nil, err
 		}
 		var nodeElements []interface{}
 		if err := rlp.DecodeBytes(node, &nodeElements); err != nil {
-			return nil, err
+			return nil, nil, err
 		}
 		ty, err := CheckKeyType(nodeElements)
 		if err != nil {
-			return nil, err
+			return nil, nil, err
 		}
 		switch ty {
 		case Leaf:
 			var account state.Account
 			if err := rlp.DecodeBytes(nodeElements[1].([]byte), &account); err != nil {
-				return nil, fmt.Errorf("error decoding account for leaf node at path %x nerror: %v", nodePath, err)
+				return nil, nil, fmt.Errorf("error decoding account for leaf node at path %x nerror: %v", nodePath, err)
 			}
 			partialPath := trie.CompactToHex(nodeElements[0].([]byte))
 			valueNodePath := append(nodePath, partialPath...)
 			encodedPath := trie.HexToCompact(valueNodePath)
 			leafKey := encodedPath[1:]
-			storageNodes, err := sdb.buildStorageNodesEventual(account.Root, nil, true)
-			if err != nil {
-				return nil, fmt.Errorf("failed building eventual storage diffs for account %+v\r\nerror: %v", account, err)
+			node := StateNode{
+				NodeType:  ty,
+				Path:      nodePath,
+				LeafKey:   leafKey,
+				NodeValue: node,
 			}
-			stateNodes = append(stateNodes, StateNode{
-				NodeType:     ty,
-				Path:         nodePath,
-				LeafKey:      leafKey,
-				NodeValue:    node,
-				StorageNodes: storageNodes,
-			})
+			if !bytes.Equal(account.CodeHash, nullCodeHash) {
+				storageNodes, err := sdb.buildStorageNodesEventual(account.Root, nil, true)
+				if err != nil {
+					return nil, nil, fmt.Errorf("failed building eventual storage diffs for account %+v\r\nerror: %v", account, err)
+				}
+				node.StorageNodes = storageNodes
+				// emit codehash => code mappings for cod
+				codeHash := common.BytesToHash(account.CodeHash)
+				addrHash := common.BytesToHash(leafKey)
+				code, err := sdb.stateCache.ContractCode(addrHash, codeHash)
+				if err != nil {
+					return nil, nil, fmt.Errorf("failed to retrieve code for codehash %s for account with leafkey %s\r\n error: %v", codeHash.String(), addrHash.String(), err)
+				}
+				codeAndCodeHashes = append(codeAndCodeHashes, CodeAndCodeHash{
+					Hash: codeHash,
+					Code: code,
+				})
+			}
+			stateNodes = append(stateNodes, node)
 		case Extension, Branch:
 			stateNodes = append(stateNodes, StateNode{
 				NodeType:  ty,
@@ -125,10 +142,10 @@ func (sdb *builder) buildStateTrie(it trie.NodeIterator) ([]StateNode, error) {
 				NodeValue: node,
 			})
 		default:
-			return nil, fmt.Errorf("unexpected node type %s", ty)
+			return nil, nil, fmt.Errorf("unexpected node type %s", ty)
 		}
 	}
-	return stateNodes, it.Error()
+	return stateNodes, codeAndCodeHashes, it.Error()
 }
 
 // BuildStateDiffObject builds a statediff object from two blocks and the provided parameters
@@ -181,16 +198,17 @@ func (sdb *builder) buildStateDiffWithIntermediateStateNodes(args Args, params P
 		return StateObject{}, fmt.Errorf("error building diff for updated accounts: %v", err)
 	}
 	// build the diff nodes for created accounts
-	createdAccounts, err := sdb.buildAccountCreations(diffAccountsAtB, params.WatchedStorageSlots, params.IntermediateStorageNodes)
+	createdAccounts, codeAndCodeHashes, err := sdb.buildAccountCreations(diffAccountsAtB, params.WatchedStorageSlots, params.IntermediateStorageNodes)
 	if err != nil {
 		return StateObject{}, fmt.Errorf("error building diff for created accounts: %v", err)
 	}
 
 	// assemble all of the nodes into the statediff object, including the intermediate nodes
 	return StateObject{
-		BlockNumber: args.BlockNumber,
-		BlockHash:   args.BlockHash,
-		Nodes:       append(append(append(updatedAccounts, createdAccounts...), createdOrUpdatedIntermediateNodes...), emptiedPaths...),
+		BlockNumber:       args.BlockNumber,
+		BlockHash:         args.BlockHash,
+		Nodes:             append(append(append(updatedAccounts, createdAccounts...), createdOrUpdatedIntermediateNodes...), emptiedPaths...),
+		CodeAndCodeHashes: codeAndCodeHashes,
 	}, nil
 }
 
@@ -235,16 +253,17 @@ func (sdb *builder) buildStateDiffWithoutIntermediateStateNodes(args Args, param
 		return StateObject{}, fmt.Errorf("error building diff for updated accounts: %v", err)
 	}
 	// build the diff nodes for created accounts
-	createdAccounts, err := sdb.buildAccountCreations(diffAccountsAtB, params.WatchedStorageSlots, params.IntermediateStorageNodes)
+	createdAccounts, codeAndCodeHashes, err := sdb.buildAccountCreations(diffAccountsAtB, params.WatchedStorageSlots, params.IntermediateStorageNodes)
 	if err != nil {
 		return StateObject{}, fmt.Errorf("error building diff for created accounts: %v", err)
 	}
 
 	// assemble all of the nodes into the statediff object
 	return StateObject{
-		BlockNumber: args.BlockNumber,
-		BlockHash:   args.BlockHash,
-		Nodes:       append(append(updatedAccounts, createdAccounts...), emptiedPaths...),
+		BlockNumber:       args.BlockNumber,
+		BlockHash:         args.BlockHash,
+		Nodes:             append(append(updatedAccounts, createdAccounts...), emptiedPaths...),
+		CodeAndCodeHashes: codeAndCodeHashes,
 	}, nil
 }
 
@@ -470,24 +489,40 @@ func (sdb *builder) buildAccountUpdates(creations, deletions AccountMap, updated
 }
 
 // buildAccountCreations returns the statediff node objects for all the accounts that exist at B but not at A
-func (sdb *builder) buildAccountCreations(accounts AccountMap, watchedStorageKeys []common.Hash, intermediateStorageNodes bool) ([]StateNode, error) {
+// it also returns the code and codehash for created contract accounts
+func (sdb *builder) buildAccountCreations(accounts AccountMap, watchedStorageKeys []common.Hash, intermediateStorageNodes bool) ([]StateNode, []CodeAndCodeHash, error) {
 	accountDiffs := make([]StateNode, 0, len(accounts))
+	codeAndCodeHashes := make([]CodeAndCodeHash, 0)
 	for _, val := range accounts {
-		// For account creations, any storage node contained is a diff
-		storageDiffs, err := sdb.buildStorageNodesEventual(val.Account.Root, watchedStorageKeys, intermediateStorageNodes)
-		if err != nil {
-			return nil, fmt.Errorf("failed building eventual storage diffs for node %x\r\nerror: %v", val.Path, err)
+		diff := StateNode{
+			NodeType:  val.NodeType,
+			Path:      val.Path,
+			LeafKey:   val.LeafKey,
+			NodeValue: val.NodeValue,
 		}
-		accountDiffs = append(accountDiffs, StateNode{
-			NodeType:     val.NodeType,
-			Path:         val.Path,
-			LeafKey:      val.LeafKey,
-			NodeValue:    val.NodeValue,
-			StorageNodes: storageDiffs,
-		})
+		if !bytes.Equal(val.Account.CodeHash, nullCodeHash) {
+			// For contract creations, any storage node contained is a diff
+			storageDiffs, err := sdb.buildStorageNodesEventual(val.Account.Root, watchedStorageKeys, intermediateStorageNodes)
+			if err != nil {
+				return nil, nil, fmt.Errorf("failed building eventual storage diffs for node %x\r\nerror: %v", val.Path, err)
+			}
+			diff.StorageNodes = storageDiffs
+			// emit codehash => code mappings for cod
+			codeHash := common.BytesToHash(val.Account.CodeHash)
+			addrHash := common.BytesToHash(val.LeafKey)
+			code, err := sdb.stateCache.ContractCode(addrHash, codeHash)
+			if err != nil {
+				return nil, nil, fmt.Errorf("failed to retrieve code for codehash %s for account with leafkey %s\r\n error: %v", codeHash.String(), addrHash.String(), err)
+			}
+			codeAndCodeHashes = append(codeAndCodeHashes, CodeAndCodeHash{
+				Hash: codeHash,
+				Code: code,
+			})
+		}
+		accountDiffs = append(accountDiffs, diff)
 	}
 
-	return accountDiffs, nil
+	return accountDiffs, codeAndCodeHashes, nil
 }
 
 // buildStorageNodesEventual builds the storage diff node objects for a created account
