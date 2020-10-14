@@ -124,10 +124,9 @@ func (sdb *builder) buildStateTrie(it trie.NodeIterator) ([]StateNode, []CodeAnd
 				node.StorageNodes = storageNodes
 				// emit codehash => code mappings for cod
 				codeHash := common.BytesToHash(account.CodeHash)
-				addrHash := common.BytesToHash(leafKey)
-				code, err := sdb.stateCache.ContractCode(addrHash, codeHash)
+				code, err := sdb.stateCache.ContractCode(common.Hash{}, codeHash)
 				if err != nil {
-					return nil, nil, fmt.Errorf("failed to retrieve code for codehash %s for account with leafkey %s\r\n error: %v", codeHash.String(), addrHash.String(), err)
+					return nil, nil, fmt.Errorf("failed to retrieve code for codehash %s\r\n error: %v", codeHash.String(), err)
 				}
 				codeAndCodeHashes = append(codeAndCodeHashes, CodeAndCodeHash{
 					Hash: codeHash,
@@ -509,10 +508,9 @@ func (sdb *builder) buildAccountCreations(accounts AccountMap, watchedStorageKey
 			diff.StorageNodes = storageDiffs
 			// emit codehash => code mappings for cod
 			codeHash := common.BytesToHash(val.Account.CodeHash)
-			addrHash := common.BytesToHash(val.LeafKey)
-			code, err := sdb.stateCache.ContractCode(addrHash, codeHash)
+			code, err := sdb.stateCache.ContractCode(common.Hash{}, codeHash)
 			if err != nil {
-				return nil, nil, fmt.Errorf("failed to retrieve code for codehash %s for account with leafkey %s\r\n error: %v", codeHash.String(), addrHash.String(), err)
+				return nil, nil, fmt.Errorf("failed to retrieve code for codehash %s\r\n error: %v", codeHash.String(), err)
 			}
 			codeAndCodeHashes = append(codeAndCodeHashes, CodeAndCodeHash{
 				Hash: codeHash,
