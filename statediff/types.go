@@ -41,6 +41,7 @@ type Params struct {
 	IncludeBlock             bool
 	IncludeReceipts          bool
 	IncludeTD                bool
+	IncludeCode              bool
 	WatchedAddresses         []common.Address
 	WatchedStorageSlots      []common.Hash
 }
@@ -82,9 +83,17 @@ func (sd *Payload) Encode() ([]byte, error) {
 
 // StateObject is the final output structure from the builder
 type StateObject struct {
-	BlockNumber *big.Int    `json:"blockNumber"     gencodec:"required"`
-	BlockHash   common.Hash `json:"blockHash"       gencodec:"required"`
-	Nodes       []StateNode `json:"nodes"           gencodec:"required"`
+	BlockNumber       *big.Int          `json:"blockNumber"     gencodec:"required"`
+	BlockHash         common.Hash       `json:"blockHash"       gencodec:"required"`
+	Nodes             []StateNode       `json:"nodes"           gencodec:"required"`
+	CodeAndCodeHashes []CodeAndCodeHash `json:"codeMapping"`
+}
+
+// CodeAndCodeHash struct for holding codehash => code mappings
+// we can't use an actual map because they are not rlp serializable
+type CodeAndCodeHash struct {
+	Hash common.Hash
+	Code []byte
 }
 
 // StateNode holds the data for a single state diff node
