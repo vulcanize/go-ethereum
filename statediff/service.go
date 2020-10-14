@@ -25,6 +25,7 @@ import (
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core"
+	"github.com/ethereum/go-ethereum/core/state"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/event"
@@ -33,6 +34,7 @@ import (
 	"github.com/ethereum/go-ethereum/p2p"
 	"github.com/ethereum/go-ethereum/rlp"
 	"github.com/ethereum/go-ethereum/rpc"
+	"github.com/ethereum/go-ethereum/trie"
 )
 
 const chainEventChanSize = 20000
@@ -44,6 +46,7 @@ type blockChain interface {
 	GetReceiptsByHash(hash common.Hash) types.Receipts
 	GetTdByHash(hash common.Hash) *big.Int
 	UnlockTrie(root common.Hash)
+	StateCache() state.Database
 }
 
 // IService is the state-diffing service interface
@@ -60,6 +63,8 @@ type IService interface {
 	StateDiffAt(blockNumber uint64, params Params) (*Payload, error)
 	// Method to get state trie object at specific block
 	StateTrieAt(blockNumber uint64, params Params) (*Payload, error)
+	// Method to stream out all code and codehash pairs
+	StreamCodeAndCodeHash(blockNumber uint64, outChan chan<- CodeAndCodeHash, quitChan chan<- bool)
 }
 
 // Service is the underlying struct for the state diffing service
@@ -360,4 +365,43 @@ func sendNonBlockingQuit(id rpc.ID, sub Subscription) {
 	default:
 		log.Info("unable to close subscription %s; channel has no receiver", id)
 	}
+}
+
+// StreamCodeAndCodeHash subscription method for extracting all the codehash=>code mappings that exist in the trie at the provided height
+func (sds *Service) StreamCodeAndCodeHash(blockNumber uint64, outChan chan<- CodeAndCodeHash, quitChan chan<- bool) {
+	current := sds.BlockChain.GetBlockByNumber(blockNumber)
+	log.Info(fmt.Sprintf("sending code and codehash at block %d", blockNumber))
+	currentTrie, err := sds.BlockChain.StateCache().OpenTrie(current.Root())
+	if err != nil {
+		log.Error("error creating trie for block", "number", current.Number(), "err", err)
+		close(quitChan)
+		return
+	}
+	it := currentTrie.NodeIterator([]byte{})
+	leafIt := trie.NewIterator(it)
+	go func() {
+		defer close(quitChan)
+		for leafIt.Next() {
+			select {
+			case <-sds.QuitChan:
+				return
+			default:
+			}
+			account := new(state.Account)
+			if err := rlp.DecodeBytes(leafIt.Value, account); err != nil {
+				log.Error("error decoding state account", "err", err)
+				return
+			}
+			codeHash := common.BytesToHash(account.CodeHash)
+			code, err := sds.BlockChain.StateCache().ContractCode(common.Hash{}, codeHash)
+			if err != nil {
+				log.Error("error collecting contract code", "err", err)
+				return
+			}
+			outChan <- CodeAndCodeHash{
+				Hash: codeHash,
+				Code: code,
+			}
+		}
+	}()
 }

@@ -21,6 +21,8 @@ import (
 	"math/big"
 	"time"
 
+	"github.com/ethereum/go-ethereum/core/state"
+
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core"
 	"github.com/ethereum/go-ethereum/core/types"
@@ -126,3 +128,7 @@ func (blockChain *BlockChain) SetTdByHash(hash common.Hash, td *big.Int) {
 }
 
 func (blockChain *BlockChain) UnlockTrie(root common.Hash) {}
+
+func (BlockChain *BlockChain) StateCache() state.Database {
+	return nil
+}

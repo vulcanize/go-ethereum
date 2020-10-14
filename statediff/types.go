@@ -92,8 +92,8 @@ type StateObject struct {
 // CodeAndCodeHash struct for holding codehash => code mappings
 // we can't use an actual map because they are not rlp serializable
 type CodeAndCodeHash struct {
-	Hash common.Hash
-	Code []byte
+	Hash common.Hash `json:"codeHash"`
+	Code []byte      `json:"code"`
 }
 
 // StateNode holds the data for a single state diff node

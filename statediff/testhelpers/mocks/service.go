@@ -276,6 +276,10 @@ func (sds *MockStateDiffService) closeType(subType common.Hash) {
 	delete(sds.SubscriptionTypes, subType)
 }
 
+func (sds *MockStateDiffService) StreamCodeAndCodeHash(blockNumber uint64, outChan chan<- statediff.CodeAndCodeHash, quitChan chan<- bool) {
+	panic("implement me")
+}
+
 func sendNonBlockingQuit(id rpc.ID, sub statediff.Subscription) {
 	select {
 	case sub.QuitChan <- true:

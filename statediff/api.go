@@ -63,11 +63,10 @@ func (api *PublicStateDiffAPI) Stream(ctx context.Context, params Params) (*rpc.
 		for {
 			select {
 			case payload := <-payloadChannel:
-				if notifyErr := notifier.Notify(rpcSub.ID, payload); notifyErr != nil {
-					log.Error("Failed to send state diff packet; error: " + notifyErr.Error())
-					unSubErr := api.sds.Unsubscribe(rpcSub.ID)
-					if unSubErr != nil {
-						log.Error("Failed to unsubscribe from the state diff service; error: " + unSubErr.Error())
+				if err := notifier.Notify(rpcSub.ID, payload); err != nil {
+					log.Error("Failed to send state diff packet; error: " + err.Error())
+					if err := api.sds.Unsubscribe(rpcSub.ID); err != nil {
+						log.Error("Failed to unsubscribe from the state diff service; error: " + err.Error())
 					}
 					return
 				}
@@ -98,4 +97,37 @@ func (api *PublicStateDiffAPI) StateDiffAt(ctx context.Context, blockNumber uint
 // StateTrieAt returns a state trie payload at the specific blockheight
 func (api *PublicStateDiffAPI) StateTrieAt(ctx context.Context, blockNumber uint64, params Params) (*Payload, error) {
 	return api.sds.StateTrieAt(blockNumber, params)
+}
+
+// StreamCodeAndCodeHash writes all of the codehash=>code pairs out to a websocket channel
+func (api *PublicStateDiffAPI) StreamCodeAndCodeHash(ctx context.Context, blockNumber uint64) (*rpc.Subscription, error) {
+	// ensure that the RPC connection supports subscriptions
+	notifier, supported := rpc.NotifierFromContext(ctx)
+	if !supported {
+		return nil, rpc.ErrNotificationsUnsupported
+	}
+
+	// create subscription and start waiting for events
+	rpcSub := notifier.CreateSubscription()
+	payloadChan := make(chan CodeAndCodeHash, chainEventChanSize)
+	quitChan := make(chan bool)
+	api.sds.StreamCodeAndCodeHash(blockNumber, payloadChan, quitChan)
+	go func() {
+		for {
+			select {
+			case payload := <-payloadChan:
+				if err := notifier.Notify(rpcSub.ID, payload); err != nil {
+					log.Error("Failed to send code and codehash packet", "err", err)
+					return
+				}
+			case err := <-rpcSub.Err():
+				log.Error("State diff service rpcSub error", "err", err)
+				return
+			case <-quitChan:
+				return
+			}
+		}
+	}()
+
+	return rpcSub, nil
 }
