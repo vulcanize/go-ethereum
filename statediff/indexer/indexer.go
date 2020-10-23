@@ -49,14 +49,14 @@ type Indexer interface {
 // StateDiffIndexer satisfies the Indexer interface for ethereum statediff objects
 type StateDiffIndexer struct {
 	chainConfig *params.ChainConfig
-	indexer     *PostgresCIDWriter
+	dbWriter    *PostgresCIDWriter
 }
 
 // NewStateDiffIndexer creates a pointer to a new PayloadConverter which satisfies the PayloadConverter interface
 func NewStateDiffIndexer(chainConfig *params.ChainConfig, db *postgres.DB) *StateDiffIndexer {
 	return &StateDiffIndexer{
 		chainConfig: chainConfig,
-		indexer:     NewPostgresCIDWriter(db),
+		dbWriter:    NewPostgresCIDWriter(db),
 	}
 }
 
@@ -94,7 +94,7 @@ func (sdt *StateDiffIndexer) PushBlock(block *types.Block, receipts types.Receip
 	traceMsg += fmt.Sprintf("payload decoding duration: %s\r\n", time.Now().Sub(t).String())
 	t = time.Now()
 	// Begin new db tx for everything
-	tx, err := sdt.indexer.db.Beginx()
+	tx, err := sdt.dbWriter.db.Beginx()
 	if err != nil {
 		return nil, err
 	}
@@ -159,7 +159,7 @@ func (sdt *StateDiffIndexer) processHeader(tx *sqlx.Tx, header *types.Header, he
 		return 0, err
 	}
 	// index header
-	return sdt.indexer.indexHeaderCID(tx, models.HeaderModel{
+	return sdt.dbWriter.upsertHeaderCID(tx, models.HeaderModel{
 		CID:             headerNode.Cid().String(),
 		MhKey:           shared.MultihashKeyFromCID(headerNode.Cid()),
 		ParentHash:      header.ParentHash.String(),
@@ -190,7 +190,7 @@ func (sdt *StateDiffIndexer) processUncles(tx *sqlx.Tx, headerID int64, blockNum
 			BlockHash:  uncleNode.Hash().String(),
 			Reward:     uncleReward.String(),
 		}
-		if err := sdt.indexer.indexUncleCID(tx, uncle, headerID); err != nil {
+		if err := sdt.dbWriter.upsertUncleCID(tx, uncle, headerID); err != nil {
 			return err
 		}
 	}
@@ -278,7 +278,7 @@ func (sdt *StateDiffIndexer) processReceiptsAndTxs(tx *sqlx.Tx, args processArgs
 			CID:        txNode.Cid().String(),
 			MhKey:      shared.MultihashKeyFromCID(txNode.Cid()),
 		}
-		txID, err := sdt.indexer.indexTransactionCID(tx, txModel, args.headerID)
+		txID, err := sdt.dbWriter.upsertTransactionCID(tx, txModel, args.headerID)
 		if err != nil {
 			return err
 		}
@@ -294,7 +294,7 @@ func (sdt *StateDiffIndexer) processReceiptsAndTxs(tx *sqlx.Tx, args processArgs
 			CID:          rctNode.Cid().String(),
 			MhKey:        shared.MultihashKeyFromCID(rctNode.Cid()),
 		}
-		if err := sdt.indexer.indexReceiptCID(tx, rctModel, txID); err != nil {
+		if err := sdt.dbWriter.upsertReceiptCID(tx, rctModel, txID); err != nil {
 			return err
 		}
 	}
@@ -316,7 +316,7 @@ func (sdt *StateDiffIndexer) PushStateNode(tx *BlockTx, stateNode sdtypes.StateN
 		NodeType: ResolveFromNodeType(stateNode.NodeType),
 	}
 	// index the state node, collect the stateID to reference by FK
-	stateID, err := sdt.indexer.indexStateCID(tx.dbtx, stateModel, tx.headerID)
+	stateID, err := sdt.dbWriter.upsertStateCID(tx.dbtx, stateModel, tx.headerID)
 	if err != nil {
 		return err
 	}
@@ -339,7 +339,7 @@ func (sdt *StateDiffIndexer) PushStateNode(tx *BlockTx, stateNode sdtypes.StateN
 			CodeHash:    account.CodeHash,
 			StorageRoot: account.Root.String(),
 		}
-		if err := sdt.indexer.indexStateAccount(tx.dbtx, accountModel, stateID); err != nil {
+		if err := sdt.dbWriter.upsertStateAccount(tx.dbtx, accountModel, stateID); err != nil {
 			return err
 		}
 	}
@@ -357,7 +357,7 @@ func (sdt *StateDiffIndexer) PushStateNode(tx *BlockTx, stateNode sdtypes.StateN
 			MhKey:      mhKey,
 			NodeType:   ResolveFromNodeType(storageNode.NodeType),
 		}
-		if err := sdt.indexer.indexStorageCID(tx.dbtx, storageModel, stateID); err != nil {
+		if err := sdt.dbWriter.upsertStorageCID(tx.dbtx, storageModel, stateID); err != nil {
 			return err
 		}
 	}

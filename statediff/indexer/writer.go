@@ -41,7 +41,7 @@ func NewPostgresCIDWriter(db *postgres.DB) *PostgresCIDWriter {
 	}
 }
 
-func (in *PostgresCIDWriter) indexHeaderCID(tx *sqlx.Tx, header models.HeaderModel) (int64, error) {
+func (in *PostgresCIDWriter) upsertHeaderCID(tx *sqlx.Tx, header models.HeaderModel) (int64, error) {
 	var headerID int64
 	err := tx.QueryRowx(`INSERT INTO eth.header_cids (block_number, block_hash, parent_hash, cid, td, node_id, reward, state_root, tx_root, receipt_root, uncle_root, bloom, timestamp, mh_key, times_validated)
 								VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
@@ -52,14 +52,14 @@ func (in *PostgresCIDWriter) indexHeaderCID(tx *sqlx.Tx, header models.HeaderMod
 	return headerID, err
 }
 
-func (in *PostgresCIDWriter) indexUncleCID(tx *sqlx.Tx, uncle models.UncleModel, headerID int64) error {
+func (in *PostgresCIDWriter) upsertUncleCID(tx *sqlx.Tx, uncle models.UncleModel, headerID int64) error {
 	_, err := tx.Exec(`INSERT INTO eth.uncle_cids (block_hash, header_id, parent_hash, cid, reward, mh_key) VALUES ($1, $2, $3, $4, $5, $6)
 								ON CONFLICT (header_id, block_hash) DO UPDATE SET (parent_hash, cid, reward, mh_key) = ($3, $4, $5, $6)`,
 		uncle.BlockHash, headerID, uncle.ParentHash, uncle.CID, uncle.Reward, uncle.MhKey)
 	return err
 }
 
-func (in *PostgresCIDWriter) indexTransactionAndReceiptCIDs(tx *sqlx.Tx, payload shared.CIDPayload, headerID int64) error {
+func (in *PostgresCIDWriter) upsertTransactionAndReceiptCIDs(tx *sqlx.Tx, payload shared.CIDPayload, headerID int64) error {
 	for _, trxCidMeta := range payload.TransactionCIDs {
 		var txID int64
 		err := tx.QueryRowx(`INSERT INTO eth.transaction_cids (header_id, tx_hash, cid, dst, src, index, mh_key, tx_data, deployment) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
@@ -71,7 +71,7 @@ func (in *PostgresCIDWriter) indexTransactionAndReceiptCIDs(tx *sqlx.Tx, payload
 		}
 		receiptCidMeta, ok := payload.ReceiptCIDs[common.HexToHash(trxCidMeta.TxHash)]
 		if ok {
-			if err := in.indexReceiptCID(tx, receiptCidMeta, txID); err != nil {
+			if err := in.upsertReceiptCID(tx, receiptCidMeta, txID); err != nil {
 				return err
 			}
 		}
@@ -79,7 +79,7 @@ func (in *PostgresCIDWriter) indexTransactionAndReceiptCIDs(tx *sqlx.Tx, payload
 	return nil
 }
 
-func (in *PostgresCIDWriter) indexTransactionCID(tx *sqlx.Tx, transaction models.TxModel, headerID int64) (int64, error) {
+func (in *PostgresCIDWriter) upsertTransactionCID(tx *sqlx.Tx, transaction models.TxModel, headerID int64) (int64, error) {
 	var txID int64
 	err := tx.QueryRowx(`INSERT INTO eth.transaction_cids (header_id, tx_hash, cid, dst, src, index, mh_key, tx_data, deployment) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
 									ON CONFLICT (header_id, tx_hash) DO UPDATE SET (cid, dst, src, index, mh_key, tx_data, deployment) = ($3, $4, $5, $6, $7, $8, $9)
@@ -88,14 +88,14 @@ func (in *PostgresCIDWriter) indexTransactionCID(tx *sqlx.Tx, transaction models
 	return txID, err
 }
 
-func (in *PostgresCIDWriter) indexReceiptCID(tx *sqlx.Tx, rct models.ReceiptModel, txID int64) error {
+func (in *PostgresCIDWriter) upsertReceiptCID(tx *sqlx.Tx, rct models.ReceiptModel, txID int64) error {
 	_, err := tx.Exec(`INSERT INTO eth.receipt_cids (tx_id, cid, contract, contract_hash, topic0s, topic1s, topic2s, topic3s, log_contracts, mh_key) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
 							  ON CONFLICT (tx_id) DO UPDATE SET (cid, contract, contract_hash, topic0s, topic1s, topic2s, topic3s, log_contracts, mh_key) = ($2, $3, $4, $5, $6, $7, $8, $9, $10)`,
 		txID, rct.CID, rct.Contract, rct.ContractHash, rct.Topic0s, rct.Topic1s, rct.Topic2s, rct.Topic3s, rct.LogContracts, rct.MhKey)
 	return err
 }
 
-func (in *PostgresCIDWriter) indexStateAndStorageCIDs(tx *sqlx.Tx, payload shared.CIDPayload, headerID int64) error {
+func (in *PostgresCIDWriter) upsertStateAndStorageCIDs(tx *sqlx.Tx, payload shared.CIDPayload, headerID int64) error {
 	for _, stateCID := range payload.StateNodeCIDs {
 		var stateID int64
 		var stateKey string
@@ -113,12 +113,12 @@ func (in *PostgresCIDWriter) indexStateAndStorageCIDs(tx *sqlx.Tx, payload share
 		if stateCID.NodeType == 2 {
 			statePath := common.Bytes2Hex(stateCID.Path)
 			for _, storageCID := range payload.StorageNodeCIDs[statePath] {
-				if err := in.indexStorageCID(tx, storageCID, stateID); err != nil {
+				if err := in.upsertStorageCID(tx, storageCID, stateID); err != nil {
 					return err
 				}
 			}
 			if stateAccount, ok := payload.StateAccounts[statePath]; ok {
-				if err := in.indexStateAccount(tx, stateAccount, stateID); err != nil {
+				if err := in.upsertStateAccount(tx, stateAccount, stateID); err != nil {
 					return err
 				}
 			}
@@ -127,7 +127,7 @@ func (in *PostgresCIDWriter) indexStateAndStorageCIDs(tx *sqlx.Tx, payload share
 	return nil
 }
 
-func (in *PostgresCIDWriter) indexStateCID(tx *sqlx.Tx, stateNode models.StateNodeModel, headerID int64) (int64, error) {
+func (in *PostgresCIDWriter) upsertStateCID(tx *sqlx.Tx, stateNode models.StateNodeModel, headerID int64) (int64, error) {
 	var stateID int64
 	var stateKey string
 	if stateNode.StateKey != nullHash.String() {
@@ -140,14 +140,14 @@ func (in *PostgresCIDWriter) indexStateCID(tx *sqlx.Tx, stateNode models.StateNo
 	return stateID, err
 }
 
-func (in *PostgresCIDWriter) indexStateAccount(tx *sqlx.Tx, stateAccount models.StateAccountModel, stateID int64) error {
+func (in *PostgresCIDWriter) upsertStateAccount(tx *sqlx.Tx, stateAccount models.StateAccountModel, stateID int64) error {
 	_, err := tx.Exec(`INSERT INTO eth.state_accounts (state_id, balance, nonce, code_hash, storage_root) VALUES ($1, $2, $3, $4, $5)
 							  ON CONFLICT (state_id) DO UPDATE SET (balance, nonce, code_hash, storage_root) = ($2, $3, $4, $5)`,
 		stateID, stateAccount.Balance, stateAccount.Nonce, stateAccount.CodeHash, stateAccount.StorageRoot)
 	return err
 }
 
-func (in *PostgresCIDWriter) indexStorageCID(tx *sqlx.Tx, storageCID models.StorageNodeModel, stateID int64) error {
+func (in *PostgresCIDWriter) upsertStorageCID(tx *sqlx.Tx, storageCID models.StorageNodeModel, stateID int64) error {
 	var storageKey string
 	if storageCID.StorageKey != nullHash.String() {
 		storageKey = storageCID.StorageKey
