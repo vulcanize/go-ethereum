@@ -35,6 +35,7 @@ require (
 	github.com/hashicorp/golang-lru v0.5.4
 	github.com/huin/goupnp v0.0.0-20161224104101-679507af18f3
 	github.com/influxdata/influxdb v1.2.3-0.20180221223340-01288bdb0883
+	github.com/ipfs/go-block-format v0.0.2
 	github.com/ipfs/go-cid v0.0.7
 	github.com/ipfs/go-ipfs-blockstore v1.0.1
 	github.com/ipfs/go-ipfs-ds-help v1.0.0
@@ -51,6 +52,7 @@ require (
 	github.com/naoina/go-stringutil v0.1.0 // indirect
 	github.com/naoina/toml v0.1.2-0.20170918210437-9fafd6967416
 	github.com/olekukonko/tablewriter v0.0.2-0.20190409134802-7e037d187b0c
+	github.com/onsi/ginkgo v1.7.0
 	github.com/onsi/gomega v1.4.3
 	github.com/pborman/uuid v0.0.0-20170112150404-1b00554d8222
 	github.com/peterh/liner v1.1.1-0.20190123174540-a2c9a5303de7
