@@ -95,38 +95,6 @@ func (in *PostgresCIDWriter) upsertReceiptCID(tx *sqlx.Tx, rct models.ReceiptMod
 	return err
 }
 
-func (in *PostgresCIDWriter) upsertStateAndStorageCIDs(tx *sqlx.Tx, payload shared.CIDPayload, headerID int64) error {
-	for _, stateCID := range payload.StateNodeCIDs {
-		var stateID int64
-		var stateKey string
-		if stateCID.StateKey != nullHash.String() {
-			stateKey = stateCID.StateKey
-		}
-		err := tx.QueryRowx(`INSERT INTO eth.state_cids (header_id, state_leaf_key, cid, state_path, node_type, diff, mh_key) VALUES ($1, $2, $3, $4, $5, $6, $7)
-									ON CONFLICT (header_id, state_path) DO UPDATE SET (state_leaf_key, cid, node_type, diff, mh_key) = ($2, $3, $5, $6, $7)
-									RETURNING id`,
-			headerID, stateKey, stateCID.CID, stateCID.Path, stateCID.NodeType, true, stateCID.MhKey).Scan(&stateID)
-		if err != nil {
-			return err
-		}
-		// If we have a state leaf node, index the associated account and storage nodes
-		if stateCID.NodeType == 2 {
-			statePath := common.Bytes2Hex(stateCID.Path)
-			for _, storageCID := range payload.StorageNodeCIDs[statePath] {
-				if err := in.upsertStorageCID(tx, storageCID, stateID); err != nil {
-					return err
-				}
-			}
-			if stateAccount, ok := payload.StateAccounts[statePath]; ok {
-				if err := in.upsertStateAccount(tx, stateAccount, stateID); err != nil {
-					return err
-				}
-			}
-		}
-	}
-	return nil
-}
-
 func (in *PostgresCIDWriter) upsertStateCID(tx *sqlx.Tx, stateNode models.StateNodeModel, headerID int64) (int64, error) {
 	var stateID int64
 	var stateKey string
