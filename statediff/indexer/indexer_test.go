@@ -51,12 +51,13 @@ var _ = Describe("PublishAndIndexer", func() {
 		db, err = shared.SetupDB()
 		Expect(err).ToNot(HaveOccurred())
 		indexer = ind.NewStateDiffIndexer(params.MainnetChainConfig, db)
-		tx, err := indexer.PushBlock(
+		var tx *ind.BlockTx
+		tx, err = indexer.PushBlock(
 			mocks.MockBlock,
 			mocks.MockReceipts,
 			mocks.MockBlock.Difficulty())
-		defer tx.Close()
 		Expect(err).ToNot(HaveOccurred())
+		defer tx.Close()
 		for _, node := range mocks.StateDiffs {
 			err = indexer.PushStateNode(tx, node)
 			Expect(err).ToNot(HaveOccurred())

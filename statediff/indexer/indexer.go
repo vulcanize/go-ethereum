@@ -164,7 +164,7 @@ func (sdi *StateDiffIndexer) PushBlock(block *types.Block, receipts types.Receip
 
 	blocktx.BlockNumber = height
 	blocktx.headerID = headerID
-	return &blocktx, err // return error explicity so that the defer() assigns to it
+	return &blocktx, err
 }
 
 // processHeader publishes and indexes a header IPLD in Postgres
