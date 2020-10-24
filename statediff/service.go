@@ -41,6 +41,7 @@ import (
 	ind "github.com/ethereum/go-ethereum/statediff/indexer"
 	nodeinfo "github.com/ethereum/go-ethereum/statediff/indexer/node"
 	"github.com/ethereum/go-ethereum/statediff/indexer/postgres"
+	"github.com/ethereum/go-ethereum/statediff/indexer/prom"
 	. "github.com/ethereum/go-ethereum/statediff/types"
 )
 
@@ -119,6 +120,7 @@ func NewStateDiffService(ethServ *eth.Ethereum, dbParams *[3]string) (*Service, 
 		}
 		indexer = ind.NewStateDiffIndexer(blockChain.Config(), db)
 	}
+	prom.Init()
 
 	return &Service{
 		Mutex:             sync.Mutex{},
