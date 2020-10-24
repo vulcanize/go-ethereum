@@ -36,6 +36,7 @@ import (
 	"github.com/ethereum/go-ethereum/statediff/indexer/ipfs/ipld"
 	"github.com/ethereum/go-ethereum/statediff/indexer/models"
 	"github.com/ethereum/go-ethereum/statediff/indexer/postgres"
+	"github.com/ethereum/go-ethereum/statediff/indexer/prom"
 	"github.com/ethereum/go-ethereum/statediff/indexer/shared"
 	sdtypes "github.com/ethereum/go-ethereum/statediff/types"
 )
@@ -92,7 +93,6 @@ func (sdi *StateDiffIndexer) PushBlock(block *types.Block, receipts types.Receip
 	}
 	// Calculate reward
 	reward := CalcEthBlockReward(block.Header(), block.Uncles(), block.Transactions(), receipts)
-	traceMsg += fmt.Sprintf("payload decoding duration: %s\r\n", time.Now().Sub(t).String())
 	t = time.Now()
 	// Begin new db tx for everything
 	tx, err := sdi.dbWriter.db.Beginx()
@@ -108,15 +108,23 @@ func (sdi *StateDiffIndexer) PushBlock(block *types.Block, receipts types.Receip
 				shared.Rollback(tx)
 				panic(p)
 			} else {
+				tDiff := time.Now().Sub(t)
+				prom.SetTimeMetric("t_state_store_code_processing", tDiff)
+				traceMsg += fmt.Sprintf("state, storage, and code storage processing time: %s\r\n", tDiff.String())
+				t = time.Now()
 				err = tx.Commit()
-				traceMsg += fmt.Sprintf("postgres transaction commit duration: %s\r\n", time.Now().Sub(t).String())
+				tDiff = time.Now().Sub(t)
+				prom.SetTimeMetric("t_postgres_commit", tDiff)
+				traceMsg += fmt.Sprintf("postgres transaction commit duration: %s\r\n", tDiff.String())
 			}
 			traceMsg += fmt.Sprintf(" TOTAL PROCESSING DURATION: %s\r\n", time.Now().Sub(start).String())
 			log.Info(traceMsg)
 			return err
 		},
 	}
-	traceMsg += fmt.Sprintf("time spent waiting for free postgres tx: %s:\r\n", time.Now().Sub(t).String())
+	tDiff := time.Now().Sub(t)
+	prom.SetTimeMetric("t_free_postgres", tDiff)
+	traceMsg += fmt.Sprintf("time spent waiting for free postgres tx: %s:\r\n", tDiff.String())
 	t = time.Now()
 
 	// Publish and index header, collect headerID
@@ -124,13 +132,17 @@ func (sdi *StateDiffIndexer) PushBlock(block *types.Block, receipts types.Receip
 	if err != nil {
 		return nil, err
 	}
-	traceMsg += fmt.Sprintf("header processing duration: %s\r\n", time.Now().Sub(t).String())
+	tDiff = time.Now().Sub(t)
+	prom.SetTimeMetric("t_header_processing", tDiff)
+	traceMsg += fmt.Sprintf("header processing time: %s\r\n", tDiff.String())
 	t = time.Now()
 	// Publish and index uncles
 	if err := sdi.processUncles(tx, headerID, height, uncleNodes); err != nil {
 		return nil, err
 	}
-	traceMsg += fmt.Sprintf("uncle processing duration: %s\r\n", time.Now().Sub(t).String())
+	tDiff = time.Now().Sub(t)
+	prom.SetTimeMetric("t_uncle_processing", tDiff)
+	traceMsg += fmt.Sprintf("uncle processing time: %s\r\n", tDiff.String())
 	t = time.Now()
 	// Publish and index receipts and txs
 	if err := sdi.processReceiptsAndTxs(tx, processArgs{
@@ -145,8 +157,11 @@ func (sdi *StateDiffIndexer) PushBlock(block *types.Block, receipts types.Receip
 	}); err != nil {
 		return nil, err
 	}
-	traceMsg += fmt.Sprintf("tx and receipt processing duration: %s\r\n", time.Now().Sub(t).String())
-	// t = time.Now()
+	tDiff = time.Now().Sub(t)
+	prom.SetTimeMetric("t_tx_receipt_processing", tDiff)
+	traceMsg += fmt.Sprintf("tx and receipt processing time: %s\r\n", tDiff.String())
+	t = time.Now()
+
 	blocktx.BlockNumber = height
 	blocktx.headerID = headerID
 	return &blocktx, err // return error explicity so that the defer() assigns to it
