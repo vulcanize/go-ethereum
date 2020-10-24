@@ -44,6 +44,7 @@ import (
 type Indexer interface {
 	PushBlock(block *types.Block, receipts types.Receipts, totalDifficulty *big.Int) (*BlockTx, error)
 	PushStateNode(tx *BlockTx, stateNode sdtypes.StateNode) error
+	PushCodeAndCodeHash(tx *BlockTx, codeAndCodeHash sdtypes.CodeAndCodeHash) error
 }
 
 // StateDiffIndexer satisfies the Indexer interface for ethereum statediff objects
@@ -362,5 +363,18 @@ func (sdi *StateDiffIndexer) PushStateNode(tx *BlockTx, stateNode sdtypes.StateN
 		}
 	}
 
+	return nil
+}
+
+// Publishes code and codehash pairs to the ipld database
+func (sdi *StateDiffIndexer) PushCodeAndCodeHash(tx *BlockTx, codeAndCodeHash sdtypes.CodeAndCodeHash) error {
+	// codec doesn't matter since db key is multihash-based
+	mhKey, err := shared.MultihashKeyFromKeccak256(codeAndCodeHash.Hash)
+	if err != nil {
+		return err
+	}
+	if err := shared.PublishDirect(tx.dbtx, mhKey, codeAndCodeHash.Code); err != nil {
+		return err
+	}
 	return nil
 }

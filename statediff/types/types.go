@@ -19,6 +19,8 @@
 
 package types
 
+import "github.com/ethereum/go-ethereum/common"
+
 // NodeType for explicitly setting type of node
 type NodeType string
 
@@ -47,5 +49,13 @@ type StorageNode struct {
 	LeafKey   []byte   `json:"leafKey"`
 }
 
+// CodeAndCodeHash struct for holding codehash => code mappings
+// we can't use an actual map because they are not rlp serializable
+type CodeAndCodeHash struct {
+	Hash common.Hash `json:"codeHash"`
+	Code []byte      `json:"code"`
+}
+
 type StateNodeSink func(StateNode) error
 type StorageNodeSink func(StorageNode) error
+type CodeSink func(CodeAndCodeHash) error

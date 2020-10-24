@@ -87,17 +87,10 @@ func (sd *Payload) Encode() ([]byte, error) {
 
 // StateObject is the final output structure from the builder
 type StateObject struct {
-	BlockNumber       *big.Int          `json:"blockNumber"     gencodec:"required"`
-	BlockHash         common.Hash       `json:"blockHash"       gencodec:"required"`
-	Nodes             []types.StateNode `json:"nodes"           gencodec:"required"`
-	CodeAndCodeHashes []CodeAndCodeHash `json:"codeMapping"`
-}
-
-// CodeAndCodeHash struct for holding codehash => code mappings
-// we can't use an actual map because they are not rlp serializable
-type CodeAndCodeHash struct {
-	Hash common.Hash `json:"codeHash"`
-	Code []byte      `json:"code"`
+	BlockNumber       *big.Int                `json:"blockNumber"     gencodec:"required"`
+	BlockHash         common.Hash             `json:"blockHash"       gencodec:"required"`
+	Nodes             []types.StateNode       `json:"nodes"           gencodec:"required"`
+	CodeAndCodeHashes []types.CodeAndCodeHash `json:"codeMapping"`
 }
 
 // AccountMap is a mapping of hex encoded path => account wrapper

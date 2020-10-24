@@ -32,6 +32,7 @@ import (
 	"github.com/ethereum/go-ethereum/p2p"
 	"github.com/ethereum/go-ethereum/rpc"
 	"github.com/ethereum/go-ethereum/statediff"
+	sdtypes "github.com/ethereum/go-ethereum/statediff/types"
 )
 
 // MockStateDiffService is a mock state diff service
@@ -289,7 +290,7 @@ func (sds *MockStateDiffService) closeType(subType common.Hash) {
 	delete(sds.SubscriptionTypes, subType)
 }
 
-func (sds *MockStateDiffService) StreamCodeAndCodeHash(blockNumber uint64, outChan chan<- statediff.CodeAndCodeHash, quitChan chan<- bool) {
+func (sds *MockStateDiffService) StreamCodeAndCodeHash(blockNumber uint64, outChan chan<- sdtypes.CodeAndCodeHash, quitChan chan<- bool) {
 	panic("implement me")
 }
 

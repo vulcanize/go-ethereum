@@ -25,6 +25,7 @@ import (
 	"github.com/ipfs/go-ipfs-ds-help"
 	node "github.com/ipfs/go-ipld-format"
 	"github.com/jmoiron/sqlx"
+	"github.com/multiformats/go-multihash"
 	"github.com/sirupsen/logrus"
 )
 
@@ -104,4 +105,20 @@ func PublishRaw(tx *sqlx.Tx, codec, mh uint64, raw []byte) (string, error) {
 	prefixedKey := blockstore.BlockPrefix.String() + dbKey.String()
 	_, err = tx.Exec(`INSERT INTO public.blocks (key, data) VALUES ($1, $2) ON CONFLICT (key) DO NOTHING`, prefixedKey, raw)
 	return c.String(), err
+}
+
+// MultihashKeyFromKeccak256 converts keccak256 hash bytes into a blockstore-prefixed multihash db key string
+func MultihashKeyFromKeccak256(hash common.Hash) (string, error) {
+	mh, err := multihash.Encode(hash.Bytes(), multihash.KECCAK_256)
+	if err != nil {
+		return "", err
+	}
+	dbKey := dshelp.MultihashToDsKey(mh)
+	return blockstore.BlockPrefix.String() + dbKey.String(), nil
+}
+
+// PublishDirect diretly writes a previously derived mhkey => value pair to the ipld database
+func PublishDirect(tx *sqlx.Tx, key string, value []byte) error {
+	_, err := tx.Exec(`INSERT INTO public.blocks (key, data) VALUES ($1, $2) ON CONFLICT (key) DO NOTHING`, key, value)
+	return err
 }

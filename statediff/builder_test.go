@@ -618,7 +618,7 @@ func TestBuilder(t *testing.T) {
 						StorageNodes: emptyStorage,
 					},
 				},
-				CodeAndCodeHashes: []statediff.CodeAndCodeHash{
+				CodeAndCodeHashes: []sdtypes.CodeAndCodeHash{
 					{
 						Hash: testhelpers.CodeHash,
 						Code: testhelpers.ByteCodeAfterDeployment,
@@ -870,7 +870,7 @@ func TestBuilderWithIntermediateNodes(t *testing.T) {
 						StorageNodes: emptyStorage,
 					},
 				},
-				CodeAndCodeHashes: []statediff.CodeAndCodeHash{
+				CodeAndCodeHashes: []sdtypes.CodeAndCodeHash{
 					{
 						Hash: testhelpers.CodeHash,
 						Code: testhelpers.ByteCodeAfterDeployment,
@@ -1084,7 +1084,7 @@ func TestBuilderWithWatchedAddressList(t *testing.T) {
 						StorageNodes: emptyStorage,
 					},
 				},
-				CodeAndCodeHashes: []statediff.CodeAndCodeHash{
+				CodeAndCodeHashes: []sdtypes.CodeAndCodeHash{
 					{
 						Hash: testhelpers.CodeHash,
 						Code: testhelpers.ByteCodeAfterDeployment,
@@ -1254,7 +1254,7 @@ func TestBuilderWithWatchedAddressAndStorageKeyList(t *testing.T) {
 						StorageNodes: emptyStorage,
 					},
 				},
-				CodeAndCodeHashes: []statediff.CodeAndCodeHash{
+				CodeAndCodeHashes: []sdtypes.CodeAndCodeHash{
 					{
 						Hash: testhelpers.CodeHash,
 						Code: testhelpers.ByteCodeAfterDeployment,
@@ -1851,7 +1851,7 @@ func TestBuilderWithMovedAccount(t *testing.T) {
 						},
 					},
 				},
-				CodeAndCodeHashes: []statediff.CodeAndCodeHash{
+				CodeAndCodeHashes: []sdtypes.CodeAndCodeHash{
 					{
 						Hash: testhelpers.CodeHash,
 						Code: testhelpers.ByteCodeAfterDeployment,
@@ -1973,7 +1973,7 @@ func TestBuilderWithMovedAccountOnlyLeafs(t *testing.T) {
 						},
 					},
 				},
-				CodeAndCodeHashes: []statediff.CodeAndCodeHash{
+				CodeAndCodeHashes: []sdtypes.CodeAndCodeHash{
 					{
 						Hash: testhelpers.CodeHash,
 						Code: testhelpers.ByteCodeAfterDeployment,
@@ -2155,7 +2155,7 @@ func TestBuildStateTrie(t *testing.T) {
 						StorageNodes: emptyStorage,
 					},
 				},
-				CodeAndCodeHashes: []statediff.CodeAndCodeHash{
+				CodeAndCodeHashes: []sdtypes.CodeAndCodeHash{
 					{
 						Hash: testhelpers.CodeHash,
 						Code: testhelpers.ByteCodeAfterDeployment,
@@ -2236,7 +2236,7 @@ func TestBuildStateTrie(t *testing.T) {
 						StorageNodes: emptyStorage,
 					},
 				},
-				CodeAndCodeHashes: []statediff.CodeAndCodeHash{
+				CodeAndCodeHashes: []sdtypes.CodeAndCodeHash{
 					{
 						Hash: testhelpers.CodeHash,
 						Code: testhelpers.ByteCodeAfterDeployment,

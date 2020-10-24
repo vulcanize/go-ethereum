@@ -41,7 +41,7 @@ import (
 	ind "github.com/ethereum/go-ethereum/statediff/indexer"
 	nodeinfo "github.com/ethereum/go-ethereum/statediff/indexer/node"
 	"github.com/ethereum/go-ethereum/statediff/indexer/postgres"
-	sdtypes "github.com/ethereum/go-ethereum/statediff/types"
+	. "github.com/ethereum/go-ethereum/statediff/types"
 )
 
 const chainEventChanSize = 20000
@@ -465,14 +465,16 @@ func (sds *Service) writeStateDiff(block *types.Block, parentRoot common.Hash, p
 	tx, err := sds.indexer.PushBlock(block, receipts, totalDifficulty)
 	// defer handling of commit/rollback for any return case
 	defer tx.Close()
-	output := func(node sdtypes.StateNode) error {
+	output := func(node StateNode) error {
 		return sds.indexer.PushStateNode(tx, node)
-		return nil
 	}
-	_, err = sds.Builder.WriteStateDiffObject(StateRoots{
+	codeOutput := func(c CodeAndCodeHash) error {
+		return sds.indexer.PushCodeAndCodeHash(tx, c)
+	}
+	err = sds.Builder.WriteStateDiffObject(StateRoots{
 		NewStateRoot: block.Root(),
 		OldStateRoot: parentRoot,
-	}, params, output)
+	}, params, output, codeOutput)
 
 	// allow dereferencing of parent, keep current locked as it should be the next parent
 	sds.BlockChain.UnlockTrie(parentRoot)
