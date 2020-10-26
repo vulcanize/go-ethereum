@@ -1229,22 +1229,22 @@ func (s *PublicBlockChainAPI) rpcMarshalBlock(b *types.Block, inclTx bool, fullT
 
 // RPCTransaction represents a transaction that will serialize to the RPC representation of a transaction
 type RPCTransaction struct {
-	BlockHash        *common.Hash    `json:"blockHash"`
-	BlockNumber      *hexutil.Big    `json:"blockNumber"`
-	From             common.Address  `json:"from"`
-	Gas              hexutil.Uint64  `json:"gas"`
-	GasPrice         *hexutil.Big    `json:"gasPrice"`
-	Hash             common.Hash     `json:"hash"`
-	Input            hexutil.Bytes   `json:"input"`
-	Nonce            hexutil.Uint64  `json:"nonce"`
-	To               *common.Address `json:"to"`
-	TransactionIndex *hexutil.Uint64 `json:"transactionIndex"`
-	Value            *hexutil.Big    `json:"value"`
-	GasPremium       *hexutil.Big    `json:"gasPremium"`
-	FeeCap           *hexutil.Big    `json:"feeCap"`
-	V                *hexutil.Big    `json:"v"`
-	R                *hexutil.Big    `json:"r"`
-	S                *hexutil.Big    `json:"s"`
+	BlockHash           *common.Hash    `json:"blockHash"`
+	BlockNumber         *hexutil.Big    `json:"blockNumber"`
+	From                common.Address  `json:"from"`
+	Gas                 hexutil.Uint64  `json:"gas"`
+	GasPrice            *hexutil.Big    `json:"gasPrice"`
+	Hash                common.Hash     `json:"hash"`
+	Input               hexutil.Bytes   `json:"input"`
+	Nonce               hexutil.Uint64  `json:"nonce"`
+	To                  *common.Address `json:"to"`
+	TransactionIndex    *hexutil.Uint64 `json:"transactionIndex"`
+	Value               *hexutil.Big    `json:"value"`
+	MaxMinerBribePerGas *hexutil.Big    `json:"gasPremium"`
+	FeeCapPerGas        *hexutil.Big    `json:"feeCap"`
+	V                   *hexutil.Big    `json:"v"`
+	R                   *hexutil.Big    `json:"r"`
+	S                   *hexutil.Big    `json:"s"`
 }
 
 // newRPCTransaction returns a transaction that will serialize to the RPC
@@ -1258,19 +1258,19 @@ func newRPCTransaction(tx *types.Transaction, blockHash common.Hash, blockNumber
 	v, r, s := tx.RawSignatureValues()
 
 	result := &RPCTransaction{
-		From:       from,
-		Gas:        hexutil.Uint64(tx.Gas()),
-		GasPrice:   (*hexutil.Big)(tx.GasPrice()),
-		Hash:       tx.Hash(),
-		Input:      hexutil.Bytes(tx.Data()),
-		Nonce:      hexutil.Uint64(tx.Nonce()),
-		To:         tx.To(),
-		Value:      (*hexutil.Big)(tx.Value()),
-		GasPremium: (*hexutil.Big)(tx.GasPremium()),
-		FeeCap:     (*hexutil.Big)(tx.FeeCap()),
-		V:          (*hexutil.Big)(v),
-		R:          (*hexutil.Big)(r),
-		S:          (*hexutil.Big)(s),
+		From:                from,
+		Gas:                 hexutil.Uint64(tx.Gas()),
+		GasPrice:            (*hexutil.Big)(tx.GasPrice()),
+		Hash:                tx.Hash(),
+		Input:               hexutil.Bytes(tx.Data()),
+		Nonce:               hexutil.Uint64(tx.Nonce()),
+		To:                  tx.To(),
+		Value:               (*hexutil.Big)(tx.Value()),
+		MaxMinerBribePerGas: (*hexutil.Big)(tx.MaxMinerBribe()),
+		FeeCapPerGas:        (*hexutil.Big)(tx.FeeCap()),
+		V:                   (*hexutil.Big)(v),
+		R:                   (*hexutil.Big)(r),
+		S:                   (*hexutil.Big)(s),
 	}
 	if blockHash != (common.Hash{}) {
 		result.BlockHash = &blockHash
@@ -1698,20 +1698,20 @@ func (s *PublicTransactionPoolAPI) SendRawTransaction(ctx context.Context, encod
 	if eip1559 && s.b.CurrentBlock().BaseFee() == nil {
 		return common.Hash{}, core.ErrNoBaseFee
 	}
-	if eip1559Finalized && (tx.GasPremium() == nil || tx.FeeCap() == nil || tx.GasPrice() != nil) {
+	if eip1559Finalized && (tx.MaxMinerBribe() == nil || tx.FeeCap() == nil || tx.GasPrice() != nil) {
 		return common.Hash{}, core.ErrTxNotEIP1559
 	}
-	if !eip1559 && (tx.GasPremium() != nil || tx.FeeCap() != nil || tx.GasPrice() == nil) {
+	if !eip1559 && (tx.MaxMinerBribe() != nil || tx.FeeCap() != nil || tx.GasPrice() == nil) {
 		return common.Hash{}, core.ErrTxIsEIP1559
 	}
-	if tx.GasPrice() != nil && (tx.GasPremium() != nil || tx.FeeCap() != nil) {
+	if tx.GasPrice() != nil && (tx.MaxMinerBribe() != nil || tx.FeeCap() != nil) {
 		return common.Hash{}, core.ErrTxSetsLegacyAndEIP1559Fields
 	}
-	if tx.GasPrice() == nil && (tx.GasPremium() == nil || tx.FeeCap() == nil) {
+	if tx.GasPrice() == nil && (tx.MaxMinerBribe() == nil || tx.FeeCap() == nil) {
 		return common.Hash{}, core.ErrMissingGasFields
 	}
-	if tx.GasPremium() != nil {
-		gasPrice := new(big.Int).Add(s.b.CurrentBlock().BaseFee(), tx.GasPremium())
+	if tx.MaxMinerBribe() != nil {
+		gasPrice := new(big.Int).Add(s.b.CurrentBlock().BaseFee(), tx.MaxMinerBribe())
 		if gasPrice.Cmp(tx.FeeCap()) > 0 {
 			gasPrice.Set(tx.FeeCap())
 		}
