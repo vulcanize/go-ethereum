@@ -18,10 +18,10 @@ package core
 
 import (
 	"errors"
-	"math"
 	"math/big"
 
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/common/math"
 	"github.com/ethereum/go-ethereum/core/vm"
 	"github.com/ethereum/go-ethereum/params"
 )
@@ -167,12 +167,12 @@ func NewStateTransition(evm *vm.EVM, msg Message, gp, gp1559 *GasPool) *StateTra
 		isEIP1559: isEIP1559,
 	}
 	if isEIP1559 {
-		//ToDo1559: check it
-		// EP1559 gasPrice = min(BASEFEE + tx.fee_premium, tx.fee_cap)
-		st.eip1559GasPrice = new(big.Int).Add(evm.BaseFee, msg.MaxMinerBribe())
-		if st.eip1559GasPrice.Cmp(msg.FeeCap()) > 0 {
-			st.eip1559GasPrice.Set(msg.FeeCap())
-		}
+		// bribe is capped such that base fee is filled first
+		// bribe_per_gas = min(transaction.max_miner_bribe_per_gas, transaction.fee_cap_per_gas - block.base_fee)
+		st.eip1559GasPrice = math.BigMin(
+			new(big.Int).Set(msg.MaxMinerBribe()),
+			new(big.Int).Sub(msg.FeeCap(), evm.BaseFee),
+		)
 	}
 	return st
 }

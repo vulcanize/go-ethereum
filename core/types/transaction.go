@@ -25,6 +25,7 @@ import (
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
+	"github.com/ethereum/go-ethereum/common/math"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/rlp"
 )
@@ -65,16 +66,16 @@ type txdata struct {
 }
 
 type txdataMarshaling struct {
-	AccountNonce hexutil.Uint64
-	Price        *hexutil.Big
-	GasLimit     hexutil.Uint64
-	Amount       *hexutil.Big
-	Payload      hexutil.Bytes
-	GasPremium   *hexutil.Big
-	FeeCap       *hexutil.Big
-	V            *hexutil.Big
-	R            *hexutil.Big
-	S            *hexutil.Big
+	AccountNonce        hexutil.Uint64
+	Price               *hexutil.Big
+	GasLimit            hexutil.Uint64
+	Amount              *hexutil.Big
+	Payload             hexutil.Bytes
+	MaxMinerBribePerGas *hexutil.Big
+	FeeCapPerGas        *hexutil.Big
+	V                   *hexutil.Big
+	R                   *hexutil.Big
+	S                   *hexutil.Big
 }
 
 func NewTransaction(nonce uint64, to common.Address, amount *big.Int, gasLimit uint64, gasPrice *big.Int, data []byte, maxMinerBribePerGas, feeCapPerGas *big.Int) *Transaction {
@@ -370,22 +371,22 @@ func (tx *Transaction) WithSignature(signer Signer, sig []byte) (*Transaction, e
 
 // Cost returns amount + gasprice * gaslimit.
 func (tx *Transaction) Cost(baseFee *big.Int) *big.Int {
+	gasPrice := new(big.Int)
 	if tx.data.Price != nil {
-		total := new(big.Int).Mul(tx.data.Price, new(big.Int).SetUint64(tx.data.GasLimit))
-		total.Add(total, tx.data.Amount)
-		return total
+		gasPrice.Set(tx.data.Price)
+	} else if baseFee != nil && tx.data.MaxMinerBribePerGas != nil && tx.data.FeeCapPerGas != nil {
+		gasPrice.Set(math.BigMin(
+			new(big.Int).Set(tx.data.MaxMinerBribePerGas),
+			new(big.Int).Sub(tx.data.FeeCapPerGas, baseFee),
+		))
+	} else {
+		return nil
 	}
-	//ToDo1559: check it
-	if baseFee != nil && tx.data.MaxMinerBribePerGas != nil && tx.data.FeeCapPerGas != nil {
-		eip1559GasPrice := new(big.Int).Add(baseFee, tx.data.MaxMinerBribePerGas)
-		if eip1559GasPrice.Cmp(tx.data.FeeCapPerGas) > 0 {
-			eip1559GasPrice.Set(tx.data.FeeCapPerGas)
-		}
-		total := new(big.Int).Mul(eip1559GasPrice, new(big.Int).SetUint64(tx.data.GasLimit))
-		total.Add(total, tx.data.Amount)
-		return total
-	}
-	return nil
+	gasLimit := new(big.Int).SetUint64(tx.data.GasLimit)
+	total := new(big.Int)
+	total.Mul(gasLimit, gasPrice)
+	total.Add(total, tx.data.Amount)
+	return total
 }
 
 // RawSignatureValues returns the V, R, S signature values of the transaction.
