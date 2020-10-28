@@ -399,7 +399,7 @@ func (s *PrivateAccountAPI) SignTransaction(ctx context.Context, args SendTxArgs
 	if args.Gas == nil {
 		return nil, fmt.Errorf("gas not specified")
 	}
-	if args.GasPrice == nil && (args.GasPremium == nil || args.FeeCap == nil) {
+	if args.GasPrice == nil && (args.MaxMinerBribePerGas == nil || args.FeeCapPerGas == nil) {
 		return nil, fmt.Errorf("gasPrice or gasPremium+feeCap not specified")
 	}
 	if args.Nonce == nil {
@@ -748,14 +748,14 @@ func (s *PublicBlockChainAPI) GetStorageAt(ctx context.Context, address common.A
 
 // CallArgs represents the arguments for a call.
 type CallArgs struct {
-	From       *common.Address `json:"from"`
-	To         *common.Address `json:"to"`
-	Gas        *hexutil.Uint64 `json:"gas"`
-	GasPrice   *hexutil.Big    `json:"gasPrice"`
-	Value      *hexutil.Big    `json:"value"`
-	Data       *hexutil.Bytes  `json:"data"`
-	GasPremium *hexutil.Big    `json:"gasPremium"`
-	FeeCap     *hexutil.Big    `json:"feeCap"`
+	From                *common.Address `json:"from"`
+	To                  *common.Address `json:"to"`
+	Gas                 *hexutil.Uint64 `json:"gas"`
+	GasPrice            *hexutil.Big    `json:"gasPrice"`
+	Value               *hexutil.Big    `json:"value"`
+	Data                *hexutil.Bytes  `json:"data"`
+	MaxMinerBribePerGas *hexutil.Big    `json:"max_miner_bribe_per_gas"`
+	FeeCapPerGas        *hexutil.Big    `json:"fee_cap_per_gas"`
 }
 
 // ToMessage converts CallArgs to the Message type used by the core evm
@@ -777,7 +777,7 @@ func (args *CallArgs) ToMessage(globalGasCap *big.Int) types.Message {
 	}
 
 	var gasPrice *big.Int
-	if args.GasPremium == nil {
+	if args.MaxMinerBribePerGas == nil {
 		gasPrice = new(big.Int).SetUint64(defaultGasPrice)
 		if args.GasPrice != nil {
 			gasPrice = args.GasPrice.ToInt()
@@ -795,7 +795,7 @@ func (args *CallArgs) ToMessage(globalGasCap *big.Int) types.Message {
 	}
 
 	// Create new call message
-	msg := types.NewMessage(addr, args.To, 0, value, gas, gasPrice, data, false, (*big.Int)(args.GasPremium), (*big.Int)(args.FeeCap))
+	msg := types.NewMessage(addr, args.To, 0, value, gas, gasPrice, data, false, (*big.Int)(args.MaxMinerBribePerGas), (*big.Int)(args.FeeCapPerGas))
 	return msg
 }
 
@@ -822,25 +822,25 @@ func DoCall(ctx context.Context, b Backend, args CallArgs, blockNrOrHash rpc.Blo
 	if eip1559 && b.CurrentBlock().BaseFee() == nil {
 		return nil, core.ErrNoBaseFee
 	}
-	if eip1559Finalized && (args.GasPremium == nil || args.FeeCap == nil || args.GasPrice != nil) {
+	if eip1559Finalized && (args.MaxMinerBribePerGas == nil || args.FeeCapPerGas == nil || args.GasPrice != nil) {
 		return nil, core.ErrTxNotEIP1559
 	}
-	if !eip1559 && (args.GasPremium != nil || args.FeeCap != nil || args.GasPrice == nil) {
+	if !eip1559 && (args.MaxMinerBribePerGas != nil || args.FeeCapPerGas != nil || args.GasPrice == nil) {
 		return nil, core.ErrTxIsEIP1559
 	}
-	if args.GasPrice != nil && (args.GasPremium != nil || args.FeeCap != nil) {
+	if args.GasPrice != nil && (args.MaxMinerBribePerGas != nil || args.FeeCapPerGas != nil) {
 		return nil, core.ErrTxSetsLegacyAndEIP1559Fields
 	}
-	if args.FeeCap != nil && args.GasPremium == nil {
+	if args.FeeCapPerGas != nil && args.MaxMinerBribePerGas == nil {
 		return nil, errors.New("if FeeCap is set, GasPremium must be set")
 	}
-	if args.GasPremium != nil {
-		if args.FeeCap == nil {
+	if args.MaxMinerBribePerGas != nil {
+		if args.FeeCapPerGas == nil {
 			return nil, errors.New("if GasPremium is set, FeeCap must be set")
 		}
-		gasPrice := new(big.Int).Add(b.CurrentBlock().BaseFee(), args.GasPremium.ToInt())
-		if gasPrice.Cmp(args.FeeCap.ToInt()) > 0 {
-			gasPrice.Set(args.FeeCap.ToInt())
+		gasPrice := new(big.Int).Add(b.CurrentBlock().BaseFee(), args.MaxMinerBribePerGas.ToInt())
+		if gasPrice.Cmp(args.FeeCapPerGas.ToInt()) > 0 {
+			gasPrice.Set(args.FeeCapPerGas.ToInt())
 		}
 		if gasPrice.Cmp(b.CurrentBlock().BaseFee()) < 0 {
 			return nil, core.ErrEIP1559GasPriceLessThanBaseFee
@@ -1507,8 +1507,8 @@ type SendTxArgs struct {
 	Data  *hexutil.Bytes `json:"data"`
 	Input *hexutil.Bytes `json:"input"`
 	// EIP1559 fields
-	GasPremium *hexutil.Big `json:"gasPremium"`
-	FeeCap     *hexutil.Big `json:"feeCap"`
+	MaxMinerBribePerGas *hexutil.Big `json:"max_miner_bribe_per_gas"`
+	FeeCapPerGas        *hexutil.Big `json:"fee_cap_per_gas"`
 }
 
 // setDefaults is a helper function that fills in default values for unspecified tx fields.
@@ -1519,25 +1519,25 @@ func (args *SendTxArgs) setDefaults(ctx context.Context, b Backend) error {
 	if eip1559 && b.CurrentBlock().BaseFee() == nil {
 		return core.ErrNoBaseFee
 	}
-	if eip1559Finalized && (args.GasPremium == nil || args.FeeCap == nil || args.GasPrice != nil) {
+	if eip1559Finalized && (args.MaxMinerBribePerGas == nil || args.FeeCapPerGas == nil || args.GasPrice != nil) {
 		return core.ErrTxNotEIP1559
 	}
-	if !eip1559 && (args.GasPremium != nil || args.FeeCap != nil || args.GasPrice == nil) {
+	if !eip1559 && (args.MaxMinerBribePerGas != nil || args.FeeCapPerGas != nil || args.GasPrice == nil) {
 		return core.ErrTxIsEIP1559
 	}
-	if args.GasPrice != nil && (args.GasPremium != nil || args.FeeCap != nil) {
+	if args.GasPrice != nil && (args.MaxMinerBribePerGas != nil || args.FeeCapPerGas != nil) {
 		return core.ErrTxSetsLegacyAndEIP1559Fields
 	}
-	if args.FeeCap != nil && args.GasPremium == nil {
+	if args.FeeCapPerGas != nil && args.MaxMinerBribePerGas == nil {
 		return errors.New("if FeeCap is set, GasPremium must be set")
 	}
-	if args.GasPremium != nil {
-		if args.FeeCap == nil {
+	if args.MaxMinerBribePerGas != nil {
+		if args.FeeCapPerGas == nil {
 			return errors.New("if GasPremium is set, FeeCap must be set")
 		}
-		gasPrice := new(big.Int).Add(b.CurrentBlock().BaseFee(), args.GasPremium.ToInt())
-		if gasPrice.Cmp(args.FeeCap.ToInt()) > 0 {
-			gasPrice.Set(args.FeeCap.ToInt())
+		gasPrice := new(big.Int).Add(b.CurrentBlock().BaseFee(), args.MaxMinerBribePerGas.ToInt())
+		if gasPrice.Cmp(args.FeeCapPerGas.ToInt()) > 0 {
+			gasPrice.Set(args.FeeCapPerGas.ToInt())
 		}
 		if gasPrice.Cmp(b.CurrentBlock().BaseFee()) < 0 {
 			return core.ErrEIP1559GasPriceLessThanBaseFee
@@ -1545,7 +1545,7 @@ func (args *SendTxArgs) setDefaults(ctx context.Context, b Backend) error {
 	}
 
 	// If EIP1559 is activated but not finalized and neither a GasPrice, GasPremium, or FeeCap are provided default to suggesting a GasPrice
-	if args.GasPrice == nil && args.GasPremium == nil {
+	if args.GasPrice == nil && args.MaxMinerBribePerGas == nil {
 		price, err := b.SuggestPrice(ctx)
 		if err != nil {
 			return err
@@ -1586,13 +1586,13 @@ func (args *SendTxArgs) setDefaults(ctx context.Context, b Backend) error {
 			input = args.Data
 		}
 		callArgs := CallArgs{
-			From:       &args.From, // From shouldn't be nil
-			To:         args.To,
-			GasPrice:   args.GasPrice,
-			Value:      args.Value,
-			Data:       input,
-			GasPremium: args.GasPremium,
-			FeeCap:     args.FeeCap,
+			From:                &args.From, // From shouldn't be nil
+			To:                  args.To,
+			GasPrice:            args.GasPrice,
+			Value:               args.Value,
+			Data:                input,
+			MaxMinerBribePerGas: args.MaxMinerBribePerGas,
+			FeeCapPerGas:        args.FeeCapPerGas,
 		}
 		pendingBlockNr := rpc.BlockNumberOrHashWithNumber(rpc.PendingBlockNumber)
 		estimated, err := DoEstimateGas(ctx, b, callArgs, pendingBlockNr, b.RPCGasCap())
@@ -1613,9 +1613,9 @@ func (args *SendTxArgs) toTransaction() *types.Transaction {
 		input = *args.Data
 	}
 	if args.To == nil {
-		return types.NewContractCreation(uint64(*args.Nonce), (*big.Int)(args.Value), uint64(*args.Gas), (*big.Int)(args.GasPrice), input, (*big.Int)(args.GasPremium), (*big.Int)(args.FeeCap))
+		return types.NewContractCreation(uint64(*args.Nonce), (*big.Int)(args.Value), uint64(*args.Gas), (*big.Int)(args.GasPrice), input, (*big.Int)(args.MaxMinerBribePerGas), (*big.Int)(args.FeeCapPerGas))
 	}
-	return types.NewTransaction(uint64(*args.Nonce), *args.To, (*big.Int)(args.Value), uint64(*args.Gas), (*big.Int)(args.GasPrice), input, (*big.Int)(args.GasPremium), (*big.Int)(args.FeeCap))
+	return types.NewTransaction(uint64(*args.Nonce), *args.To, (*big.Int)(args.Value), uint64(*args.Gas), (*big.Int)(args.GasPrice), input, (*big.Int)(args.MaxMinerBribePerGas), (*big.Int)(args.FeeCapPerGas))
 }
 
 // SubmitTransaction is a helper function that submits tx to txPool and logs a message.
