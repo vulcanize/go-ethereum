@@ -150,6 +150,7 @@ var (
 		utils.StateDiffDBFlag,
 		utils.StateDiffDBNodeIDFlag,
 		utils.StateDiffDBClientNameFlag,
+		utils.StateDiffWritingFlag,
 		configFileFlag,
 	}
 

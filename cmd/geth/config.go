@@ -174,7 +174,7 @@ func makeFullNode(ctx *cli.Context) *node.Node {
 				utils.Fatalf("Must specify client name for statediff DB output")
 			}
 		}
-		utils.RegisterStateDiffService(stack, dbParams)
+		utils.RegisterStateDiffService(stack, dbParams, ctx.GlobalBool(utils.StateDiffWritingFlag.Name))
 	}
 
 	// Whisper must be explicitly enabled by specifying at least 1 whisper flag or in dev mode
