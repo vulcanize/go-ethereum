@@ -73,41 +73,30 @@ func CalcBaseFee(config *params.ChainConfig, parent *types.Header) *big.Int {
 		return new(big.Int).SetUint64(config.EIP1559.InitialBaseFee)
 	}
 
-	parentBaseFee := parent.BaseFee
-	parentBlockGasUsed := new(big.Int).SetUint64(parent.GasUsed)
-	targetGasUsed := new(big.Int).SetUint64(parent.GasLimit)
-	baseFeeMaxChangeDenominator := new(big.Int).SetUint64(config.EIP1559.EIP1559BaseFeeMaxChangeDenominator)
-
-	cmp := parentBlockGasUsed.Cmp(targetGasUsed)
+	parentBaseFee := new(big.Int).Set(parent.BaseFee)
+	parentGasUsed := new(big.Int).SetUint64(parent.GasUsed)
+	parentGasTarget := new(big.Int).SetUint64(parent.GasLimit)
+	feeDenominator := new(big.Int).SetUint64(config.EIP1559.EIP1559BaseFeeMaxChangeDenominator)
+	cmp := parentGasUsed.Cmp(parentGasTarget)
 
 	if cmp == 0 {
-		return targetGasUsed
+		return parentBaseFee
 	}
 
 	if cmp > 0 {
-		gasDelta := new(big.Int).Sub(parentBlockGasUsed, targetGasUsed)
-		feeDelta := math.BigMax(
-			new(big.Int).Div(
-				new(big.Int).Div(
-					new(big.Int).Mul(parentBaseFee, gasDelta),
-					targetGasUsed,
-				),
-				baseFeeMaxChangeDenominator,
-			),
-			common.Big1,
-		)
+		gasDelta := new(big.Int).Sub(parentGasUsed, parentGasTarget)
+		delta := new(big.Int)
+		delta.Mul(parentBaseFee, gasDelta)
+		delta.Div(delta, parentGasTarget)
+		delta.Div(delta, feeDenominator)
+		feeDelta := math.BigMax(parentBaseFee, big.NewInt(1))
 		return new(big.Int).Add(parentBaseFee, feeDelta)
 	}
 
-	gasDelta := new(big.Int).Sub(targetGasUsed, parentBlockGasUsed)
-	feeDelta := new(big.Int).Div(
-		new(big.Int).Div(
-			new(big.Int).Mul(parentBaseFee, gasDelta),
-			targetGasUsed,
-		),
-		baseFeeMaxChangeDenominator,
-	)
-
+	gasDelta := new(big.Int).Sub(parentGasTarget, parentGasUsed)
+	feeDelta := new(big.Int).Mul(parentBaseFee, gasDelta)
+	feeDelta.Div(feeDelta, parentGasTarget)
+	feeDelta.Div(feeDelta, feeDenominator)
 	return new(big.Int).Sub(parentBaseFee, feeDelta)
 }
 
