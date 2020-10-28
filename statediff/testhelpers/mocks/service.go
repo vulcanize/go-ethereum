@@ -130,19 +130,6 @@ func (sds *MockStateDiffService) StateDiffAt(blockNumber uint64, params statedif
 	return sds.processStateDiff(currentBlock, parentBlock.Root(), params)
 }
 
-// WriteStateDiffAt mock method
-func (sds *MockStateDiffService) WriteStateDiffAt(blockNumber uint64, params statediff.Params) error {
-	currentBlock := sds.BlockChain.GetBlockByNumber(blockNumber)
-	log.Info(fmt.Sprintf("sending state diff at %d", blockNumber))
-	parentRoot := common.Hash{}
-	if blockNumber != 0 {
-		parentBlock := sds.BlockChain.GetBlockByHash(currentBlock.ParentHash())
-		parentRoot = parentBlock.Root()
-	}
-	_, err := sds.processStateDiff(currentBlock, parentRoot, params)
-	return err
-}
-
 // processStateDiff method builds the state diff payload from the current block, parent state root, and provided params
 func (sds *MockStateDiffService) processStateDiff(currentBlock *types.Block, parentRoot common.Hash, params statediff.Params) (*statediff.Payload, error) {
 	stateDiff, err := sds.Builder.BuildStateDiffObject(statediff.Args{
@@ -184,6 +171,37 @@ func (sds *MockStateDiffService) newPayload(stateObject []byte, block *types.Blo
 		payload.ReceiptsRlp = receiptBuff.Bytes()
 	}
 	return payload, nil
+}
+
+// WriteStateDiffAt mock method
+func (sds *MockStateDiffService) WriteStateDiffAt(blockNumber uint64, params statediff.Params) error {
+	// TODO: something useful here
+	return nil
+}
+
+// Loop mock method
+func (sds *MockStateDiffService) WriteLoop(chan core.ChainEvent) {
+	//loop through chain events until no more
+	for {
+		select {
+		case block := <-sds.BlockChan:
+			currentBlock := block
+			parentBlock := <-sds.ParentBlockChan
+			parentHash := parentBlock.Hash()
+			if parentBlock == nil {
+				log.Error("Parent block is nil, skipping this block",
+					"parent block hash", parentHash.String(),
+					"current block number", currentBlock.Number())
+				continue
+			}
+			// TODO:
+			// sds.writeStateDiff(currentBlock, parentBlock.Root(), statediff.Params{})
+		case <-sds.QuitChan:
+			log.Debug("Quitting the statediff block channel")
+			sds.close()
+			return
+		}
+	}
 }
 
 // StateTrieAt mock method
