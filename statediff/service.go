@@ -209,7 +209,7 @@ func (sds *Service) WriteLoop(chainEventCh chan core.ChainEvent) {
 			sds.close()
 			return
 		case <-sds.QuitChan:
-			log.Info("Quitting the statediffing process")
+			log.Info("Quitting the statediff writing process")
 			sds.close()
 			return
 		}
@@ -412,7 +412,7 @@ func (sds *Service) Start(*p2p.Server) error {
 	go sds.Loop(chainEventCh)
 
 	if sds.enableWriteLoop {
-		log.Debug("Starting statediff DB write loop (parameters: %+v)", writeLoopParams)
+		log.Info("Starting statediff DB write loop", writeLoopParams)
 		go sds.WriteLoop(make(chan core.ChainEvent, chainEventChanSize))
 	}
 
