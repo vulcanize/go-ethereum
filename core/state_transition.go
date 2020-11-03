@@ -167,12 +167,14 @@ func NewStateTransition(evm *vm.EVM, msg Message, gp, gp1559 *GasPool) *StateTra
 		isEIP1559: isEIP1559,
 	}
 	if isEIP1559 {
-		// bribe is capped such that base fee is filled first
+		// # bribe is capped such that base fee is filled first
 		// bribe_per_gas = min(transaction.max_miner_bribe_per_gas, transaction.fee_cap_per_gas - block.base_fee)
-		st.eip1559GasPrice = math.BigMin(
+		// # signer pays both the bribe and the base fee
+		// effective_gas_price = bribe_per_gas + block.base_fee
+		st.eip1559GasPrice = new(big.Int).Add(evm.BaseFee, math.BigMin(
 			new(big.Int).Set(msg.MaxMinerBribe()),
 			new(big.Int).Sub(msg.FeeCap(), evm.BaseFee),
-		)
+		))
 	}
 	return st
 }
