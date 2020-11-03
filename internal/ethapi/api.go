@@ -1240,8 +1240,8 @@ type RPCTransaction struct {
 	To                  *common.Address `json:"to"`
 	TransactionIndex    *hexutil.Uint64 `json:"transactionIndex"`
 	Value               *hexutil.Big    `json:"value"`
-	MaxMinerBribePerGas *hexutil.Big    `json:"gasPremium"`
-	FeeCapPerGas        *hexutil.Big    `json:"feeCap"`
+	MaxMinerBribePerGas *hexutil.Big    `json:"max_miner_bribe_per_gas"`
+	FeeCapPerGas        *hexutil.Big    `json:"fee_cap_per_gas"`
 	V                   *hexutil.Big    `json:"v"`
 	R                   *hexutil.Big    `json:"r"`
 	S                   *hexutil.Big    `json:"s"`
