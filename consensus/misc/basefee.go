@@ -89,7 +89,7 @@ func CalcBaseFee(config *params.ChainConfig, parent *types.Header) *big.Int {
 		delta.Mul(parentBaseFee, gasDelta)
 		delta.Div(delta, parentGasTarget)
 		delta.Div(delta, feeDenominator)
-		feeDelta := math.BigMax(parentBaseFee, big.NewInt(1))
+		feeDelta := math.BigMax(delta, big.NewInt(1))
 		return new(big.Int).Add(parentBaseFee, feeDelta)
 	}
 
