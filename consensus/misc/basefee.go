@@ -18,6 +18,7 @@ package misc
 
 import (
 	"errors"
+
 	"math/big"
 
 	"github.com/ethereum/go-ethereum/common"
@@ -59,6 +60,37 @@ func VerifyEIP1559BaseFee(config *params.ChainConfig, header, parent *types.Head
 	return nil
 }
 
+func computeBaseFee(pBaseFee *big.Int, pGasUsed, pGasTarget, denominator uint64) *big.Int {
+	var baseFee *big.Int
+	if pGasUsed == pGasTarget {
+		baseFee = new(big.Int).Set(pBaseFee)
+	} else if pGasUsed > pGasTarget {
+		gasDelta := big.NewInt(int64(pGasUsed) - int64(pGasTarget))
+		feeDelta := math.BigMax(
+			new(big.Int).Div(
+				new(big.Int).Mul(pBaseFee, gasDelta),
+				new(big.Int).Mul(
+					new(big.Int).SetUint64(pGasTarget),
+					new(big.Int).SetUint64(denominator),
+				),
+			),
+			big.NewInt(1),
+		)
+		baseFee = new(big.Int).Add(pBaseFee, feeDelta)
+	} else {
+		gasDelta := big.NewInt(int64(pGasTarget) - int64(pGasUsed))
+		feeDelta := new(big.Int).Div(
+			new(big.Int).Mul(pBaseFee, gasDelta),
+			new(big.Int).Mul(
+				new(big.Int).SetUint64(pGasTarget),
+				new(big.Int).SetUint64(denominator),
+			),
+		)
+		baseFee = new(big.Int).Sub(pBaseFee, feeDelta)
+	}
+	return baseFee
+}
+
 // CalcBaseFee returns the baseFee for the current block provided the parent header and config parameters
 func CalcBaseFee(config *params.ChainConfig, parent *types.Header) *big.Int {
 	height := new(big.Int).Add(parent.Number, common.Big1)
@@ -73,31 +105,12 @@ func CalcBaseFee(config *params.ChainConfig, parent *types.Header) *big.Int {
 		return new(big.Int).SetUint64(config.EIP1559.InitialBaseFee)
 	}
 
-	parentBaseFee := new(big.Int).Set(parent.BaseFee)
-	parentGasUsed := new(big.Int).SetUint64(parent.GasUsed)
-	parentGasTarget := new(big.Int).SetUint64(parent.GasLimit)
-	feeDenominator := new(big.Int).SetUint64(config.EIP1559.EIP1559BaseFeeMaxChangeDenominator)
-	cmp := parentGasUsed.Cmp(parentGasTarget)
-
-	if cmp == 0 {
-		return parentBaseFee
-	}
-
-	if cmp > 0 {
-		gasDelta := new(big.Int).Sub(parentGasUsed, parentGasTarget)
-		delta := new(big.Int)
-		delta.Mul(parentBaseFee, gasDelta)
-		delta.Div(delta, parentGasTarget)
-		delta.Div(delta, feeDenominator)
-		feeDelta := math.BigMax(delta, big.NewInt(1))
-		return new(big.Int).Add(parentBaseFee, feeDelta)
-	}
-
-	gasDelta := new(big.Int).Sub(parentGasTarget, parentGasUsed)
-	feeDelta := new(big.Int).Mul(parentBaseFee, gasDelta)
-	feeDelta.Div(feeDelta, parentGasTarget)
-	feeDelta.Div(feeDelta, feeDenominator)
-	return new(big.Int).Sub(parentBaseFee, feeDelta)
+	return computeBaseFee(
+		parent.BaseFee,
+		parent.GasUsed,
+		parent.GasLimit,
+		config.EIP1559.EIP1559BaseFeeMaxChangeDenominator,
+	)
 }
 
 // CalcEIP1559GasTarget returns the EIP1559GasTarget at the current height and header.GasLimit
