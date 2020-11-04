@@ -77,8 +77,8 @@ type SendTxArgs struct {
 	Data  *hexutil.Bytes `json:"data"`
 	Input *hexutil.Bytes `json:"input,omitempty"`
 	// EIP1559 fields
-	MaxMinerBribePerGas *hexutil.Big `json:"max_miner_bribe_per_gas"`
-	FeeCapPerGas        *hexutil.Big `json:"fee_cap_per_gas"`
+	MaxMinerBribePerGas *hexutil.Big `json:"maxMinerBribePerGas"`
+	FeeCapPerGas        *hexutil.Big `json:"feeCapPerGas"`
 }
 
 func (args SendTxArgs) String() string {

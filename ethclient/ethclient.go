@@ -565,10 +565,10 @@ func toCallArg(msg ethereum.CallMsg) interface{} {
 		arg["gasPrice"] = (*hexutil.Big)(msg.GasPrice)
 	}
 	if msg.MaxMinerBribePerGas != nil {
-		arg["max_miner_bribe_per_gas"] = (*hexutil.Big)(msg.MaxMinerBribePerGas)
+		arg["maxMinerBribePerGas"] = (*hexutil.Big)(msg.MaxMinerBribePerGas)
 	}
 	if msg.FeeCapPerGas != nil {
-		arg["fee_cap_per_gas"] = (*hexutil.Big)(msg.FeeCapPerGas)
+		arg["feeCapPerGas"] = (*hexutil.Big)(msg.FeeCapPerGas)
 	}
 	return arg
 }

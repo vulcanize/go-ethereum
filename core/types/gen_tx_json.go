@@ -22,8 +22,8 @@ func (t txdata) MarshalJSON() ([]byte, error) {
 		Recipient           *common.Address `json:"to"       rlp:"nil"`
 		Amount              *hexutil.Big    `json:"value"    gencodec:"required"`
 		Payload             hexutil.Bytes   `json:"input"    gencodec:"required"`
-		MaxMinerBribePerGas *hexutil.Big    `json:"max_miner_bribe_per_gas" rlp:"nil"`
-		FeeCapPerGas        *hexutil.Big    `json:"fee_cap_per_gas"     rlp:"nil"`
+		MaxMinerBribePerGas *hexutil.Big    `json:"maxMinerBribePerGas" rlp:"nil"`
+		FeeCapPerGas        *hexutil.Big    `json:"feeCapPerGas"        rlp:"nil"`
 		V                   *hexutil.Big    `json:"v" gencodec:"required"`
 		R                   *hexutil.Big    `json:"r" gencodec:"required"`
 		S                   *hexutil.Big    `json:"s" gencodec:"required"`
@@ -54,8 +54,8 @@ func (t *txdata) UnmarshalJSON(input []byte) error {
 		Recipient           *common.Address `json:"to"       rlp:"nil"`
 		Amount              *hexutil.Big    `json:"value"    gencodec:"required"`
 		Payload             *hexutil.Bytes  `json:"input"    gencodec:"required"`
-		MaxMinerBribePerGas *hexutil.Big    `json:"max_miner_bribe_per_gas" rlp:"nil"`
-		FeeCapPerGas        *hexutil.Big    `json:"fee_cap_per_gas"     rlp:"nil"`
+		MaxMinerBribePerGas *hexutil.Big    `json:"maxMinerBribePerGas" rlp:"nil"`
+		FeeCapPerGas        *hexutil.Big    `json:"feeCapPerGas"     rlp:"nil"`
 		V                   *hexutil.Big    `json:"v" gencodec:"required"`
 		R                   *hexutil.Big    `json:"r" gencodec:"required"`
 		S                   *hexutil.Big    `json:"s" gencodec:"required"`

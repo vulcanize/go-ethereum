@@ -53,8 +53,8 @@ type txdata struct {
 	Payload      []byte          `json:"input"    gencodec:"required"`
 
 	// EIP1559 gas values
-	MaxMinerBribePerGas *big.Int `json:"max_miner_bribe_per_gas" rlp:"nil"`
-	FeeCapPerGas        *big.Int `json:"fee_cap_per_gas" rlp:"nil"`
+	MaxMinerBribePerGas *big.Int `json:"maxMinerBribePerGas" rlp:"nil"`
+	FeeCapPerGas        *big.Int `json:"feeCapPerGas" rlp:"nil"`
 
 	// Signature values
 	V *big.Int `json:"v" gencodec:"required"`

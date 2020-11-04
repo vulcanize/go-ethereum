@@ -754,8 +754,8 @@ type CallArgs struct {
 	GasPrice            *hexutil.Big    `json:"gasPrice"`
 	Value               *hexutil.Big    `json:"value"`
 	Data                *hexutil.Bytes  `json:"data"`
-	MaxMinerBribePerGas *hexutil.Big    `json:"max_miner_bribe_per_gas"`
-	FeeCapPerGas        *hexutil.Big    `json:"fee_cap_per_gas"`
+	MaxMinerBribePerGas *hexutil.Big    `json:"maxMinerBribePerGas"`
+	FeeCapPerGas        *hexutil.Big    `json:"feeCapPerGas"`
 }
 
 // ToMessage converts CallArgs to the Message type used by the core evm
@@ -1240,8 +1240,8 @@ type RPCTransaction struct {
 	To                  *common.Address `json:"to"`
 	TransactionIndex    *hexutil.Uint64 `json:"transactionIndex"`
 	Value               *hexutil.Big    `json:"value"`
-	MaxMinerBribePerGas *hexutil.Big    `json:"max_miner_bribe_per_gas"`
-	FeeCapPerGas        *hexutil.Big    `json:"fee_cap_per_gas"`
+	MaxMinerBribePerGas *hexutil.Big    `json:"maxMinerBribePerGas"`
+	FeeCapPerGas        *hexutil.Big    `json:"feeCapPerGas"`
 	V                   *hexutil.Big    `json:"v"`
 	R                   *hexutil.Big    `json:"r"`
 	S                   *hexutil.Big    `json:"s"`
@@ -1507,8 +1507,8 @@ type SendTxArgs struct {
 	Data  *hexutil.Bytes `json:"data"`
 	Input *hexutil.Bytes `json:"input"`
 	// EIP1559 fields
-	MaxMinerBribePerGas *hexutil.Big `json:"max_miner_bribe_per_gas"`
-	FeeCapPerGas        *hexutil.Big `json:"fee_cap_per_gas"`
+	MaxMinerBribePerGas *hexutil.Big `json:"maxMinerBribePerGas"`
+	FeeCapPerGas        *hexutil.Big `json:"feeCapPerGas"`
 }
 
 // setDefaults is a helper function that fills in default values for unspecified tx fields.
