@@ -371,22 +371,25 @@ func (tx *Transaction) WithSignature(signer Signer, sig []byte) (*Transaction, e
 
 // Cost returns amount + gasprice * gaslimit.
 func (tx *Transaction) Cost(baseFee *big.Int) *big.Int {
-	gasPrice := new(big.Int)
 	if tx.data.Price != nil {
-		gasPrice.Set(tx.data.Price)
-	} else if baseFee != nil && tx.data.MaxMinerBribePerGas != nil && tx.data.FeeCapPerGas != nil {
-		gasPrice.Set(math.BigMin(
+		total := new(big.Int).Mul(tx.data.Price, new(big.Int).SetUint64(tx.data.GasLimit))
+		total.Add(total, tx.data.Amount)
+		return total
+	}
+	if baseFee != nil && tx.data.MaxMinerBribePerGas != nil && tx.data.FeeCapPerGas != nil {
+		// # bribe is capped such that base fee is filled first
+		// bribe_per_gas = min(transaction.max_miner_bribe_per_gas, transaction.fee_cap_per_gas - block.base_fee)
+		// # signer pays both the bribe and the base fee
+		// effective_gas_price = bribe_per_gas + block.base_fee
+		eip1559GasPrice := new(big.Int).Add(baseFee, math.BigMin(
 			new(big.Int).Set(tx.data.MaxMinerBribePerGas),
 			new(big.Int).Sub(tx.data.FeeCapPerGas, baseFee),
 		))
-	} else {
-		return nil
+		total := new(big.Int).Mul(eip1559GasPrice, new(big.Int).SetUint64(tx.data.GasLimit))
+		total.Add(total, tx.data.Amount)
+		return total
 	}
-	gasLimit := new(big.Int).SetUint64(tx.data.GasLimit)
-	total := new(big.Int)
-	total.Mul(gasLimit, gasPrice)
-	total.Add(total, tx.data.Amount)
-	return total
+	return nil
 }
 
 // RawSignatureValues returns the V, R, S signature values of the transaction.
