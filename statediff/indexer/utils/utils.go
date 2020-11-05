@@ -19,7 +19,7 @@ package utils
 import (
 	"errors"
 
-	"github.com/sirupsen/logrus"
+	"github.com/ethereum/go-ethereum/log"
 
 	"github.com/ethereum/go-ethereum/statediff/indexer/node"
 	"github.com/ethereum/go-ethereum/statediff/indexer/postgres"
@@ -28,7 +28,7 @@ import (
 func LoadPostgres(database postgres.Config, node node.Info) postgres.DB {
 	db, err := postgres.NewDB(database, node)
 	if err != nil {
-		logrus.Fatal("Error loading postgres: ", err)
+		log.Fatal("Error loading postgres: ", err)
 	}
 	return *db
 }

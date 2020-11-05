@@ -118,7 +118,7 @@ func (sdi *StateDiffIndexer) PushBlock(block *types.Block, receipts types.Receip
 				traceMsg += fmt.Sprintf("postgres transaction commit duration: %s\r\n", tDiff.String())
 			}
 			traceMsg += fmt.Sprintf(" TOTAL PROCESSING DURATION: %s\r\n", time.Now().Sub(start).String())
-			log.Info(traceMsg)
+			log.Debug(traceMsg)
 			return err
 		},
 	}

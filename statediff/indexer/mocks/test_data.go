@@ -26,11 +26,11 @@ import (
 	"github.com/ethereum/go-ethereum/core/state"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/crypto"
+	"github.com/ethereum/go-ethereum/log"
 	"github.com/ethereum/go-ethereum/params"
 	"github.com/ethereum/go-ethereum/rlp"
 	"github.com/ipfs/go-block-format"
 	"github.com/multiformats/go-multihash"
-	log "github.com/sirupsen/logrus"
 
 	"github.com/ethereum/go-ethereum/statediff/indexer/ipfs/ipld"
 	"github.com/ethereum/go-ethereum/statediff/indexer/models"
@@ -423,23 +423,23 @@ func createTransactionsAndReceipts() (types.Transactions, types.Receipts, common
 	mockCurve := elliptic.P256()
 	mockPrvKey, err := ecdsa.GenerateKey(mockCurve, rand.Reader)
 	if err != nil {
-		log.Fatal(err)
+		log.Crit(err.Error())
 	}
 	signedTrx1, err := types.SignTx(trx1, transactionSigner, mockPrvKey)
 	if err != nil {
-		log.Fatal(err)
+		log.Crit(err.Error())
 	}
 	signedTrx2, err := types.SignTx(trx2, transactionSigner, mockPrvKey)
 	if err != nil {
-		log.Fatal(err)
+		log.Crit(err.Error())
 	}
 	signedTrx3, err := types.SignTx(trx3, transactionSigner, mockPrvKey)
 	if err != nil {
-		log.Fatal(err)
+		log.Crit(err.Error())
 	}
 	SenderAddr, err := types.Sender(transactionSigner, signedTrx1) // same for both trx
 	if err != nil {
-		log.Fatal(err)
+		log.Crit(err.Error())
 	}
 	// make receipts
 	mockReceipt1 := types.NewReceipt(common.HexToHash("0x0").Bytes(), false, 50)

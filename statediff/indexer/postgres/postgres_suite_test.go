@@ -20,14 +20,14 @@ import (
 	"io/ioutil"
 	"testing"
 
-	log "github.com/sirupsen/logrus"
+	"github.com/ethereum/go-ethereum/log"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 )
 
 func init() {
-	log.SetOutput(ioutil.Discard)
+	log.Root().SetHandler(log.DiscardHandler())
 }
 
 func TestPostgres(t *testing.T) {
