@@ -17,20 +17,9 @@
 package postgres_test
 
 import (
-	"io/ioutil"
-	"testing"
-
 	"github.com/ethereum/go-ethereum/log"
-
-	. "github.com/onsi/ginkgo"
-	. "github.com/onsi/gomega"
 )
 
 func init() {
 	log.Root().SetHandler(log.DiscardHandler())
-}
-
-func TestPostgres(t *testing.T) {
-	RegisterFailHandler(Fail)
-	RunSpecs(t, "Postgres Suite")
 }

@@ -19,34 +19,44 @@ package postgres_test
 import (
 	"fmt"
 	"strings"
+	"testing"
 
 	"math/big"
 
 	"github.com/jmoiron/sqlx"
 	_ "github.com/lib/pq"
-	. "github.com/onsi/ginkgo"
-	. "github.com/onsi/gomega"
 
-	"github.com/ethereum/go-ethereum/statediff/node"
-	"github.com/ethereum/go-ethereum/statediff/postgres"
+	"github.com/ethereum/go-ethereum/statediff/indexer/node"
+	"github.com/ethereum/go-ethereum/statediff/indexer/postgres"
+	"github.com/ethereum/go-ethereum/statediff/indexer/shared"
 )
 
-var DBConfig postgres.Config
+var DBParams postgres.ConnectionParams
 
-var _ = Describe("Postgres DB", func() {
+func expectContainsSubstring(t *testing.T, full string, sub string) {
+	if !strings.Contains(full, sub) {
+		t.Fatalf("Expected \"%v\" to contain substring \"%v\"\n", full, sub)
+	}
+}
+
+func TestPostgresDB(t *testing.T) {
 	var sqlxdb *sqlx.DB
 
-	It("connects to the database", func() {
+	t.Run("connects to the database", func(t *testing.T) {
 		var err error
-		pgConfig := postgres.DbConnectionString(DBConfig)
+		pgConfig := postgres.DbConnectionString(DBParams)
 
 		sqlxdb, err = sqlx.Connect("postgres", pgConfig)
 
-		Expect(err).Should(BeNil())
-		Expect(sqlxdb).ShouldNot(BeNil())
+		if err != nil {
+			t.Fatal(err)
+		}
+		if sqlxdb == nil {
+			t.Fatal("DB is nil")
+		}
 	})
 
-	It("serializes big.Int to db", func() {
+	t.Run("serializes big.Int to db", func(t *testing.T) {
 		// postgres driver doesn't support go big.Int type
 		// various casts in golang uint64, int64, overflow for
 		// transaction value (in wei) even though
@@ -54,51 +64,68 @@ var _ = Describe("Postgres DB", func() {
 		// sized int, so use string representation of big.Int
 		// and cast on insert
 
-		pgConnectString := postgres.DbConnectionString(DBConfig)
+		pgConnectString := postgres.DbConnectionString(DBParams)
 		db, err := sqlx.Connect("postgres", pgConnectString)
-		Expect(err).NotTo(HaveOccurred())
+		if err != nil {
+			t.Fatal(err)
+		}
+		if err != nil {
+			t.Fatal(err)
+		}
 
 		bi := new(big.Int)
 		bi.SetString("34940183920000000000", 10)
-		Expect(bi.String()).To(Equal("34940183920000000000"))
+		shared.ExpectEqual(t, bi.String(), "34940183920000000000")
 
 		defer db.Exec(`DROP TABLE IF EXISTS example`)
 		_, err = db.Exec("CREATE TABLE example ( id INTEGER, data NUMERIC )")
-		Expect(err).ToNot(HaveOccurred())
+		if err != nil {
+			t.Fatal(err)
+		}
 
 		sqlStatement := `  
 			INSERT INTO example (id, data)
 			VALUES (1, cast($1 AS NUMERIC))`
 		_, err = db.Exec(sqlStatement, bi.String())
-		Expect(err).ToNot(HaveOccurred())
+		if err != nil {
+			t.Fatal(err)
+		}
 
 		var data string
 		err = db.QueryRow(`SELECT data FROM example WHERE id = 1`).Scan(&data)
-		Expect(err).ToNot(HaveOccurred())
+		if err != nil {
+			t.Fatal(err)
+		}
 
-		Expect(bi.String()).To(Equal(data))
+		shared.ExpectEqual(t, bi.String(), data)
 		actual := new(big.Int)
 		actual.SetString(data, 10)
-		Expect(actual).To(Equal(bi))
+		shared.ExpectEqual(t, actual, bi)
 	})
 
-	It("throws error when can't connect to the database", func() {
-		invalidDatabase := postgres.Config{}
+	t.Run("throws error when can't connect to the database", func(t *testing.T) {
+		invalidDatabase := postgres.ConnectionParams{}
 		node := node.Info{GenesisBlock: "GENESIS", NetworkID: "1", ID: "x123", ClientName: "geth"}
 
-		_, err := postgres.NewDB(invalidDatabase, node)
+		_, err := postgres.NewDB(postgres.DbConnectionString(invalidDatabase),
+			postgres.ConnectionConfig{}, node)
 
-		Expect(err).To(HaveOccurred())
-		Expect(err.Error()).To(ContainSubstring(postgres.DbConnectionFailedMsg))
+		if err == nil {
+			t.Fatal("Expected an error")
+		}
+
+		expectContainsSubstring(t, err.Error(), postgres.DbConnectionFailedMsg)
 	})
 
-	It("throws error when can't create node", func() {
+	t.Run("throws error when can't create node", func(t *testing.T) {
 		badHash := fmt.Sprintf("x %s", strings.Repeat("1", 100))
 		node := node.Info{GenesisBlock: badHash, NetworkID: "1", ID: "x123", ClientName: "geth"}
 
-		_, err := postgres.NewDB(DBConfig, node)
+		_, err := postgres.NewDB(postgres.DbConnectionString(DBParams), postgres.ConnectionConfig{}, node)
 
-		Expect(err).To(HaveOccurred())
-		Expect(err.Error()).To(ContainSubstring(postgres.SettingNodeFailedMsg))
+		if err == nil {
+			t.Fatal("Expected an error")
+		}
+		expectContainsSubstring(t, err.Error(), postgres.SettingNodeFailedMsg)
 	})
-})
+}

@@ -17,32 +17,47 @@
 package indexer
 
 import (
-	. "github.com/onsi/gomega"
+	"testing"
 
 	"github.com/ethereum/go-ethereum/statediff/indexer/models"
 	"github.com/ethereum/go-ethereum/statediff/indexer/postgres"
 )
 
 // TearDownDB is used to tear down the watcher dbs after tests
-func TearDownDB(db *postgres.DB) {
+func TearDownDB(t *testing.T, db *postgres.DB) {
 	tx, err := db.Beginx()
-	Expect(err).NotTo(HaveOccurred())
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	_, err = tx.Exec(`DELETE FROM eth.header_cids`)
-	Expect(err).NotTo(HaveOccurred())
+	if err != nil {
+		t.Fatal(err)
+	}
 	_, err = tx.Exec(`DELETE FROM eth.transaction_cids`)
-	Expect(err).NotTo(HaveOccurred())
+	if err != nil {
+		t.Fatal(err)
+	}
 	_, err = tx.Exec(`DELETE FROM eth.receipt_cids`)
-	Expect(err).NotTo(HaveOccurred())
+	if err != nil {
+		t.Fatal(err)
+	}
 	_, err = tx.Exec(`DELETE FROM eth.state_cids`)
-	Expect(err).NotTo(HaveOccurred())
+	if err != nil {
+		t.Fatal(err)
+	}
 	_, err = tx.Exec(`DELETE FROM eth.storage_cids`)
-	Expect(err).NotTo(HaveOccurred())
+	if err != nil {
+		t.Fatal(err)
+	}
 	_, err = tx.Exec(`DELETE FROM blocks`)
-	Expect(err).NotTo(HaveOccurred())
-
+	if err != nil {
+		t.Fatal(err)
+	}
 	err = tx.Commit()
-	Expect(err).NotTo(HaveOccurred())
+	if err != nil {
+		t.Fatal(err)
+	}
 }
 
 // TxModelsContainsCID used to check if a list of TxModels contains a specific cid string

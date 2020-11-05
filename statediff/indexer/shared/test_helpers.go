@@ -17,12 +17,21 @@
 package shared
 
 import (
+	"reflect"
+	"testing"
+
 	"github.com/ipfs/go-cid"
 	"github.com/multiformats/go-multihash"
 
 	"github.com/ethereum/go-ethereum/statediff/indexer/node"
 	"github.com/ethereum/go-ethereum/statediff/indexer/postgres"
 )
+
+func ExpectEqual(t *testing.T, got interface{}, want interface{}) {
+	if !reflect.DeepEqual(got, want) {
+		t.Fatalf("Expected: %v\nActual: %v", want, got)
+	}
+}
 
 // SetupDB is use to setup a db for watcher tests
 func SetupDB() (*postgres.DB, error) {
