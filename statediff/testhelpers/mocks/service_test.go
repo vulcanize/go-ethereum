@@ -136,7 +136,7 @@ func testSubscriptionAPI(t *testing.T) {
 		Subscriptions:     make(map[common.Hash]map[rpc.ID]statediff.Subscription),
 		SubscriptionTypes: make(map[common.Hash]statediff.Params),
 	}
-	mockService.Start(nil)
+	mockService.Start()
 	id := rpc.NewID()
 	payloadChan := make(chan statediff.Payload)
 	quitChan := make(chan bool)

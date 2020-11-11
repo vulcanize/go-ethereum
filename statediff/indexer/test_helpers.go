@@ -19,7 +19,6 @@ package indexer
 import (
 	"testing"
 
-	"github.com/ethereum/go-ethereum/statediff/indexer/models"
 	"github.com/ethereum/go-ethereum/statediff/indexer/postgres"
 )
 
@@ -58,24 +57,4 @@ func TearDownDB(t *testing.T, db *postgres.DB) {
 	if err != nil {
 		t.Fatal(err)
 	}
-}
-
-// TxModelsContainsCID used to check if a list of TxModels contains a specific cid string
-func TxModelsContainsCID(txs []models.TxModel, cid string) bool {
-	for _, tx := range txs {
-		if tx.CID == cid {
-			return true
-		}
-	}
-	return false
-}
-
-// ListContainsBytes used to check if a list of byte arrays contains a particular byte array
-func ReceiptModelsContainsCID(rcts []models.ReceiptModel, cid string) bool {
-	for _, rct := range rcts {
-		if rct.CID == cid {
-			return true
-		}
-	}
-	return false
 }

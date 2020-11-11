@@ -1705,26 +1705,27 @@ func SetDNSDiscoveryDefaults(cfg *eth.Config, genesis common.Hash) {
 }
 
 // RegisterEthService adds an Ethereum client to the stack.
-func RegisterEthService(stack *node.Node, cfg *eth.Config) ethapi.Backend {
-	if cfg.SyncMode == downloader.LightSync {
-		backend, err := les.New(stack, cfg)
-		if err != nil {
-			Fatalf("Failed to register the Ethereum service: %v", err)
-		}
-		return backend.ApiBackend
-	} else {
-		backend, err := eth.New(stack, cfg)
-		if err != nil {
-			Fatalf("Failed to register the Ethereum service: %v", err)
-		}
-		if cfg.LightServ > 0 {
-			_, err := les.NewLesServer(stack, backend, cfg)
-			if err != nil {
-				Fatalf("Failed to create the LES server: %v", err)
-			}
-		}
-		return backend.APIBackend
+func RegisterEthService(stack *node.Node, cfg *eth.Config) *eth.Ethereum {
+	backend, err := eth.New(stack, cfg)
+	if err != nil {
+		Fatalf("Failed to register the Ethereum service: %v", err)
 	}
+	if cfg.LightServ > 0 {
+		_, err := les.NewLesServer(stack, backend, cfg)
+		if err != nil {
+			Fatalf("Failed to create the LES server: %v", err)
+		}
+	}
+	return backend
+}
+
+// RegisterLesEthService adds an Ethereum les client to the stack.
+func RegisterLesEthService(stack *node.Node, cfg *eth.Config) *les.LightEthereum {
+	backend, err := les.New(stack, cfg)
+	if err != nil {
+		Fatalf("Failed to register the Ethereum service: %v", err)
+	}
+	return backend
 }
 
 // RegisterEthStatsService configures the Ethereum Stats daemon and adds it to
@@ -1744,16 +1745,9 @@ func RegisterGraphQLService(stack *node.Node, backend ethapi.Backend, cfg node.C
 
 // RegisterStateDiffService configures and registers a service to stream state diff data over RPC
 // dbParams are: Postgres connection URI, Node ID, client name
-func RegisterStateDiffService(stack *node.Node, dbParams *[3]string, startWriteLoop bool) {
-	if err := stack.Register(func(ctx *node.ServiceContext) (node.Service, error) {
-		var ethServ *eth.Ethereum
-		err := ctx.Service(&ethServ)
-		if err != nil {
-			return nil, err
-		}
-		return statediff.NewStateDiffService(ethServ, dbParams, startWriteLoop)
-	}); err != nil {
-		Fatalf("Failed to register State Diff Service", err)
+func RegisterStateDiffService(stack *node.Node, ethServ *eth.Ethereum, dbParams *statediff.DBParams, startWriteLoop bool) {
+	if err := statediff.New(stack, ethServ, dbParams, startWriteLoop); err != nil {
+		Fatalf("Failed to register the Statediff service: %v", err)
 	}
 }
 

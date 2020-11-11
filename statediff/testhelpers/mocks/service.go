@@ -279,7 +279,7 @@ func (sds *MockStateDiffService) close() {
 }
 
 // Start mock method
-func (sds *MockStateDiffService) Start(server *p2p.Server) error {
+func (sds *MockStateDiffService) Start() error {
 	log.Info("Starting mock statediff service")
 	if sds.ParentBlockChan == nil || sds.BlockChan == nil {
 		return errors.New("MockStateDiffingService needs to be configured with a MockParentBlockChan and MockBlockChan")

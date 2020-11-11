@@ -24,6 +24,8 @@ import (
 	"sync"
 	"testing"
 
+	"github.com/ethereum/go-ethereum/trie"
+
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core"
 	"github.com/ethereum/go-ethereum/core/types"
@@ -46,8 +48,8 @@ var (
 	parentHeader1 = types.Header{Number: big.NewInt(rand.Int63()), Root: parentRoot1}
 	parentHeader2 = types.Header{Number: big.NewInt(rand.Int63()), Root: parentRoot2}
 
-	parentBlock1 = types.NewBlock(&parentHeader1, nil, nil, nil)
-	parentBlock2 = types.NewBlock(&parentHeader2, nil, nil, nil)
+	parentBlock1 = types.NewBlock(&parentHeader1, nil, nil, nil, new(trie.Trie))
+	parentBlock2 = types.NewBlock(&parentHeader2, nil, nil, nil, new(trie.Trie))
 
 	parentHash1 = parentBlock1.Hash()
 	parentHash2 = parentBlock2.Hash()
@@ -59,9 +61,9 @@ var (
 	header2   = types.Header{ParentHash: parentHash2, Root: testRoot2, Number: big.NewInt(2)}
 	header3   = types.Header{ParentHash: common.HexToHash("parent hash"), Root: testRoot3, Number: big.NewInt(3)}
 
-	testBlock1 = types.NewBlock(&header1, nil, nil, nil)
-	testBlock2 = types.NewBlock(&header2, nil, nil, nil)
-	testBlock3 = types.NewBlock(&header3, nil, nil, nil)
+	testBlock1 = types.NewBlock(&header1, nil, nil, nil, new(trie.Trie))
+	testBlock2 = types.NewBlock(&header2, nil, nil, nil, new(trie.Trie))
+	testBlock3 = types.NewBlock(&header3, nil, nil, nil, new(trie.Trie))
 
 	receiptRoot1  = common.HexToHash("0x05")
 	receiptRoot2  = common.HexToHash("0x06")

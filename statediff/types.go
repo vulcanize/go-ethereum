@@ -34,6 +34,13 @@ type Subscription struct {
 	QuitChan    chan<- bool
 }
 
+// DBParams holds params for Postgres db connection
+type DBParams struct {
+	ConnectionURL string
+	ID            string
+	ClientName    string
+}
+
 // Params is used to carry in parameters from subscribing/requesting clients configuration
 type Params struct {
 	IntermediateStateNodes   bool

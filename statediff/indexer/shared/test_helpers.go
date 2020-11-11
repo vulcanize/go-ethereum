@@ -36,8 +36,8 @@ func ExpectEqual(t *testing.T, got interface{}, want interface{}) {
 // SetupDB is use to setup a db for watcher tests
 func SetupDB() (*postgres.DB, error) {
 	uri := postgres.DbConnectionString(postgres.ConnectionParams{
-		User:     "vulcanize",
-		Password: "libertad",
+		User:     "postgres",
+		Password: "",
 		Hostname: "localhost",
 		Name:     "vulcanize_testing",
 		Port:     5432,
@@ -65,10 +65,4 @@ func TestCID(b []byte) cid.Cid {
 	}
 	c, _ := pref.Sum(b)
 	return c
-}
-
-// PublishMockIPLD writes a mhkey-data pair to the public.blocks table so that test data can FK reference the mhkey
-func PublishMockIPLD(db *postgres.DB, mhKey string, mockData []byte) error {
-	_, err := db.Exec(`INSERT INTO public.blocks (key, data) VALUES ($1, $2) ON CONFLICT (key) DO NOTHING`, mhKey, mockData)
-	return err
 }

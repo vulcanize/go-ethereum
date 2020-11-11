@@ -22,6 +22,8 @@ import (
 	"crypto/rand"
 	"math/big"
 
+	"github.com/ethereum/go-ethereum/trie"
+
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/state"
 	"github.com/ethereum/go-ethereum/core/types"
@@ -29,12 +31,9 @@ import (
 	"github.com/ethereum/go-ethereum/log"
 	"github.com/ethereum/go-ethereum/params"
 	"github.com/ethereum/go-ethereum/rlp"
-	"github.com/ipfs/go-block-format"
 	"github.com/multiformats/go-multihash"
 
 	"github.com/ethereum/go-ethereum/statediff/indexer/ipfs/ipld"
-	"github.com/ethereum/go-ethereum/statediff/indexer/models"
-	"github.com/ethereum/go-ethereum/statediff/indexer/shared"
 	"github.com/ethereum/go-ethereum/statediff/testhelpers"
 	sdtypes "github.com/ethereum/go-ethereum/statediff/types"
 )
@@ -54,8 +53,7 @@ var (
 	}
 	MockTransactions, MockReceipts, SenderAddr = createTransactionsAndReceipts()
 	ReceiptsRlp, _                             = rlp.EncodeToBytes(MockReceipts)
-	MockBlock                                  = types.NewBlock(&MockHeader, MockTransactions, nil, MockReceipts)
-	MockBlockRlp, _                            = rlp.EncodeToBytes(MockBlock)
+	MockBlock                                  = types.NewBlock(&MockHeader, MockTransactions, nil, MockReceipts, new(trie.Trie))
 	MockHeaderRlp, _                           = rlp.EncodeToBytes(MockBlock.Header())
 	Address                                    = common.HexToAddress("0xaE9BEa628c4Ce503DcFD7E305CaB4e29E7476592")
 	AnotherAddress                             = common.HexToAddress("0xaE9BEa628c4Ce503DcFD7E305CaB4e29E7476593")
@@ -77,167 +75,15 @@ var (
 		Data:    []byte{},
 	}
 	HeaderCID, _  = ipld.RawdataToCid(ipld.MEthHeader, MockHeaderRlp, multihash.KECCAK_256)
-	HeaderMhKey   = shared.MultihashKeyFromCID(HeaderCID)
 	Trx1CID, _    = ipld.RawdataToCid(ipld.MEthTx, MockTransactions.GetRlp(0), multihash.KECCAK_256)
-	Trx1MhKey     = shared.MultihashKeyFromCID(Trx1CID)
 	Trx2CID, _    = ipld.RawdataToCid(ipld.MEthTx, MockTransactions.GetRlp(1), multihash.KECCAK_256)
-	Trx2MhKey     = shared.MultihashKeyFromCID(Trx2CID)
 	Trx3CID, _    = ipld.RawdataToCid(ipld.MEthTx, MockTransactions.GetRlp(2), multihash.KECCAK_256)
-	Trx3MhKey     = shared.MultihashKeyFromCID(Trx3CID)
 	Rct1CID, _    = ipld.RawdataToCid(ipld.MEthTxReceipt, MockReceipts.GetRlp(0), multihash.KECCAK_256)
-	Rct1MhKey     = shared.MultihashKeyFromCID(Rct1CID)
 	Rct2CID, _    = ipld.RawdataToCid(ipld.MEthTxReceipt, MockReceipts.GetRlp(1), multihash.KECCAK_256)
-	Rct2MhKey     = shared.MultihashKeyFromCID(Rct2CID)
 	Rct3CID, _    = ipld.RawdataToCid(ipld.MEthTxReceipt, MockReceipts.GetRlp(2), multihash.KECCAK_256)
-	Rct3MhKey     = shared.MultihashKeyFromCID(Rct3CID)
 	State1CID, _  = ipld.RawdataToCid(ipld.MEthStateTrie, ContractLeafNode, multihash.KECCAK_256)
-	State1MhKey   = shared.MultihashKeyFromCID(State1CID)
 	State2CID, _  = ipld.RawdataToCid(ipld.MEthStateTrie, AccountLeafNode, multihash.KECCAK_256)
-	State2MhKey   = shared.MultihashKeyFromCID(State2CID)
 	StorageCID, _ = ipld.RawdataToCid(ipld.MEthStorageTrie, StorageLeafNode, multihash.KECCAK_256)
-	StorageMhKey  = shared.MultihashKeyFromCID(StorageCID)
-	MockTrxMeta   = []models.TxModel{
-		{
-			CID:        "", // This is empty until we go to publish to ipfs
-			MhKey:      "",
-			Src:        SenderAddr.Hex(),
-			Dst:        Address.String(),
-			Index:      0,
-			TxHash:     MockTransactions[0].Hash().String(),
-			Data:       []byte{},
-			Deployment: false,
-		},
-		{
-			CID:        "",
-			MhKey:      "",
-			Src:        SenderAddr.Hex(),
-			Dst:        AnotherAddress.String(),
-			Index:      1,
-			TxHash:     MockTransactions[1].Hash().String(),
-			Data:       []byte{},
-			Deployment: false,
-		},
-		{
-			CID:        "",
-			MhKey:      "",
-			Src:        SenderAddr.Hex(),
-			Dst:        "",
-			Index:      2,
-			TxHash:     MockTransactions[2].Hash().String(),
-			Data:       MockContractByteCode,
-			Deployment: true,
-		},
-	}
-	MockTrxMetaPostPublsh = []models.TxModel{
-		{
-			CID:        Trx1CID.String(), // This is empty until we go to publish to ipfs
-			MhKey:      Trx1MhKey,
-			Src:        SenderAddr.Hex(),
-			Dst:        Address.String(),
-			Index:      0,
-			TxHash:     MockTransactions[0].Hash().String(),
-			Data:       []byte{},
-			Deployment: false,
-		},
-		{
-			CID:        Trx2CID.String(),
-			MhKey:      Trx2MhKey,
-			Src:        SenderAddr.Hex(),
-			Dst:        AnotherAddress.String(),
-			Index:      1,
-			TxHash:     MockTransactions[1].Hash().String(),
-			Data:       []byte{},
-			Deployment: false,
-		},
-		{
-			CID:        Trx3CID.String(),
-			MhKey:      Trx3MhKey,
-			Src:        SenderAddr.Hex(),
-			Dst:        "",
-			Index:      2,
-			TxHash:     MockTransactions[2].Hash().String(),
-			Data:       MockContractByteCode,
-			Deployment: true,
-		},
-	}
-	MockRctMeta = []models.ReceiptModel{
-		{
-			CID:   "",
-			MhKey: "",
-			Topic0s: []string{
-				mockTopic11.String(),
-			},
-			Topic1s: []string{
-				mockTopic12.String(),
-			},
-			Contract:     "",
-			ContractHash: "",
-			LogContracts: []string{
-				Address.String(),
-			},
-		},
-		{
-			CID:   "",
-			MhKey: "",
-			Topic0s: []string{
-				mockTopic21.String(),
-			},
-			Topic1s: []string{
-				mockTopic22.String(),
-			},
-			Contract:     "",
-			ContractHash: "",
-			LogContracts: []string{
-				AnotherAddress.String(),
-			},
-		},
-		{
-			CID:          "",
-			MhKey:        "",
-			Contract:     ContractAddress.String(),
-			ContractHash: ContractHash,
-			LogContracts: []string{},
-		},
-	}
-	MockRctMetaPostPublish = []models.ReceiptModel{
-		{
-			CID:   Rct1CID.String(),
-			MhKey: Rct1MhKey,
-			Topic0s: []string{
-				mockTopic11.String(),
-			},
-			Topic1s: []string{
-				mockTopic12.String(),
-			},
-			Contract:     "",
-			ContractHash: "",
-			LogContracts: []string{
-				Address.String(),
-			},
-		},
-		{
-			CID:   Rct2CID.String(),
-			MhKey: Rct2MhKey,
-			Topic0s: []string{
-				mockTopic21.String(),
-			},
-			Topic1s: []string{
-				mockTopic22.String(),
-			},
-			Contract:     "",
-			ContractHash: "",
-			LogContracts: []string{
-				AnotherAddress.String(),
-			},
-		},
-		{
-			CID:          Rct3CID.String(),
-			MhKey:        Rct3MhKey,
-			Contract:     ContractAddress.String(),
-			ContractHash: ContractHash,
-			LogContracts: []string{},
-		},
-	}
 
 	// statediff data
 	storageLocation    = common.HexToHash("0")
@@ -252,7 +98,6 @@ var (
 	nonce1             = uint64(1)
 	ContractRoot       = "0x821e2556a290c86405f8160a2d662042a431ba456b9db265c79bb837c04be5f0"
 	ContractCodeHash   = common.HexToHash("0x753f98a8d4328b15636e46f66f2cb4bc860100aa17967cc145fcd17d1d4710ea")
-	contractPath       = common.Bytes2Hex([]byte{'\x06'})
 	ContractLeafKey    = testhelpers.AddressToLeafKey(ContractAddress)
 	ContractAccount, _ = rlp.EncodeToBytes(state.Account{
 		Nonce:    nonce1,
@@ -269,8 +114,6 @@ var (
 	nonce0          = uint64(0)
 	AccountRoot     = "0x56e81f171bcc55a6ff8345e692c0f86e5b48e01b996cadc001622fb5e363b421"
 	AccountCodeHash = common.HexToHash("0xc5d2460186f7233c927e7db2dcc703c0e500b653ca82273b7bfad8045d85a470")
-	accountPath     = common.Bytes2Hex([]byte{'\x0c'})
-	AccountAddresss = common.HexToAddress("0x0D3ab14BBaD3D99F4203bd7a11aCB94882050E7e")
 	AccountLeafKey  = testhelpers.Account2LeafKey
 	Account, _      = rlp.EncodeToBytes(state.Account{
 		Nonce:    nonce0,
@@ -307,110 +150,6 @@ var (
 			StorageNodes: []sdtypes.StorageNode{},
 		},
 	}
-
-	MockStateNodes = []shared.TrieNode{
-		{
-			LeafKey: common.BytesToHash(ContractLeafKey),
-			Path:    []byte{'\x06'},
-			Value:   ContractLeafNode,
-			Type:    sdtypes.Leaf,
-		},
-		{
-			LeafKey: common.BytesToHash(AccountLeafKey),
-			Path:    []byte{'\x0c'},
-			Value:   AccountLeafNode,
-			Type:    sdtypes.Leaf,
-		},
-	}
-	MockStateMetaPostPublish = []models.StateNodeModel{
-		{
-			CID:      State1CID.String(),
-			MhKey:    State1MhKey,
-			Path:     []byte{'\x06'},
-			NodeType: 2,
-			StateKey: common.BytesToHash(ContractLeafKey).Hex(),
-		},
-		{
-			CID:      State2CID.String(),
-			MhKey:    State2MhKey,
-			Path:     []byte{'\x0c'},
-			NodeType: 2,
-			StateKey: common.BytesToHash(AccountLeafKey).Hex(),
-		},
-	}
-	MockStorageNodes = map[string][]shared.TrieNode{
-		contractPath: {
-			{
-				LeafKey: common.BytesToHash(StorageLeafKey),
-				Value:   StorageLeafNode,
-				Type:    sdtypes.Leaf,
-				Path:    []byte{},
-			},
-		},
-	}
-
-	// aggregate payloads
-	MockCIDPayload = shared.CIDPayload{
-		HeaderCID: models.HeaderModel{
-			BlockHash:       MockBlock.Hash().String(),
-			BlockNumber:     MockBlock.Number().String(),
-			CID:             HeaderCID.String(),
-			MhKey:           HeaderMhKey,
-			ParentHash:      MockBlock.ParentHash().String(),
-			TotalDifficulty: MockBlock.Difficulty().String(),
-			Reward:          "5000000000000000000",
-			StateRoot:       MockBlock.Root().String(),
-			RctRoot:         MockBlock.ReceiptHash().String(),
-			TxRoot:          MockBlock.TxHash().String(),
-			UncleRoot:       MockBlock.UncleHash().String(),
-			Bloom:           MockBlock.Bloom().Bytes(),
-			Timestamp:       MockBlock.Time(),
-		},
-		UncleCIDs:       []models.UncleModel{},
-		TransactionCIDs: MockTrxMetaPostPublsh,
-		ReceiptCIDs: map[common.Hash]models.ReceiptModel{
-			MockTransactions[0].Hash(): MockRctMetaPostPublish[0],
-			MockTransactions[1].Hash(): MockRctMetaPostPublish[1],
-			MockTransactions[2].Hash(): MockRctMetaPostPublish[2],
-		},
-		StateNodeCIDs: MockStateMetaPostPublish,
-		StorageNodeCIDs: map[string][]models.StorageNodeModel{
-			contractPath: {
-				{
-					CID:        StorageCID.String(),
-					MhKey:      StorageMhKey,
-					Path:       []byte{},
-					StorageKey: common.BytesToHash(StorageLeafKey).Hex(),
-					NodeType:   2,
-				},
-			},
-		},
-		StateAccounts: map[string]models.StateAccountModel{
-			contractPath: {
-				Balance:     big.NewInt(0).String(),
-				Nonce:       nonce1,
-				CodeHash:    ContractCodeHash.Bytes(),
-				StorageRoot: common.HexToHash(ContractRoot).String(),
-			},
-			accountPath: {
-				Balance:     big.NewInt(1000).String(),
-				Nonce:       nonce0,
-				CodeHash:    AccountCodeHash.Bytes(),
-				StorageRoot: common.HexToHash(AccountRoot).String(),
-			},
-		},
-	}
-
-	HeaderIPLD, _  = blocks.NewBlockWithCid(MockHeaderRlp, HeaderCID)
-	Trx1IPLD, _    = blocks.NewBlockWithCid(MockTransactions.GetRlp(0), Trx1CID)
-	Trx2IPLD, _    = blocks.NewBlockWithCid(MockTransactions.GetRlp(1), Trx2CID)
-	Trx3IPLD, _    = blocks.NewBlockWithCid(MockTransactions.GetRlp(2), Trx3CID)
-	Rct1IPLD, _    = blocks.NewBlockWithCid(MockReceipts.GetRlp(0), Rct1CID)
-	Rct2IPLD, _    = blocks.NewBlockWithCid(MockReceipts.GetRlp(1), Rct2CID)
-	Rct3IPLD, _    = blocks.NewBlockWithCid(MockReceipts.GetRlp(2), Rct3CID)
-	State1IPLD, _  = blocks.NewBlockWithCid(ContractLeafNode, State1CID)
-	State2IPLD, _  = blocks.NewBlockWithCid(AccountLeafNode, State2CID)
-	StorageIPLD, _ = blocks.NewBlockWithCid(StorageLeafNode, StorageCID)
 )
 
 // createTransactionsAndReceipts is a helper function to generate signed mock transactions and mock receipts with mock logs

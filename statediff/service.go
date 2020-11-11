@@ -18,7 +18,6 @@ package statediff
 
 import (
 	"bytes"
-	"fmt"
 	"math/big"
 	"strconv"
 	"sync"
@@ -69,7 +68,7 @@ type blockChain interface {
 // IService is the state-diffing service interface
 type IService interface {
 	// APIs(), Protocols(), Start() and Stop()
-	node.Service
+	node.Lifecycle
 	// Main event loop for processing state diffs
 	Loop(chainEventCh chan core.ChainEvent)
 	// Method to subscribe to receive state diff processing output
@@ -118,30 +117,28 @@ type lastBlockCache struct {
 	block *types.Block
 }
 
-// NewStateDiffService creates a new statediff.Service
-func NewStateDiffService(ethServ *eth.Ethereum, dbParams *[3]string, enableWriteLoop bool) (*Service, error) {
+// New creates a new statediff.Service
+func New(stack *node.Node, ethServ *eth.Ethereum, dbParams *DBParams, enableWriteLoop bool) error {
 	blockChain := ethServ.BlockChain()
 	var indexer ind.Indexer
 	if dbParams != nil {
 		info := nodeinfo.Info{
 			GenesisBlock: blockChain.Genesis().Hash().Hex(),
 			NetworkID:    strconv.FormatUint(ethServ.NetVersion(), 10),
-			// ChainID:      blockChain.Config().ChainID.String(),
-			ChainID:    blockChain.Config().ChainID.Uint64(),
-			ID:         dbParams[1],
-			ClientName: dbParams[2],
+			ChainID:      blockChain.Config().ChainID.Uint64(),
+			ID:           dbParams.ID,
+			ClientName:   dbParams.ClientName,
 		}
 
 		// TODO: pass max idle, open, lifetime?
-		db, err := postgres.NewDB(dbParams[0], postgres.ConnectionConfig{}, info)
+		db, err := postgres.NewDB(dbParams.ConnectionURL, postgres.ConnectionConfig{}, info)
 		if err != nil {
-			return nil, err
+			return err
 		}
 		indexer = ind.NewStateDiffIndexer(blockChain.Config(), db)
 	}
 	prom.Init()
-
-	return &Service{
+	serv := &Service{
 		Mutex:             sync.Mutex{},
 		BlockChain:        blockChain,
 		Builder:           NewBuilder(blockChain.StateCache()),
@@ -150,7 +147,9 @@ func NewStateDiffService(ethServ *eth.Ethereum, dbParams *[3]string, enableWrite
 		SubscriptionTypes: make(map[common.Hash]Params),
 		indexer:           indexer,
 		enableWriteLoop:   enableWriteLoop,
-	}, nil
+	}
+	stack.RegisterLifecycle(serv)
+	return nil
 }
 
 // Protocols exports the services p2p protocols, this service has none
@@ -196,12 +195,12 @@ func (sds *Service) WriteLoop(chainEventCh chan core.ChainEvent) {
 			currentBlock := chainEvent.Block
 			parentBlock := sds.lastBlock.replace(currentBlock, sds.BlockChain)
 			if parentBlock == nil {
-				log.Error(fmt.Sprintf("Parent block is nil, skipping this block (%d)", currentBlock.Number()))
+				log.Error("Parent block is nil, skipping this block", "block height", currentBlock.Number())
 				continue
 			}
 			err := sds.writeStateDiff(currentBlock, parentBlock.Root(), writeLoopParams)
 			if err != nil {
-				log.Error(fmt.Sprintf("statediff (DB write) processing error at blockheight %d: err: %s", currentBlock.Number().Uint64(), err.Error()))
+				log.Error("statediff (DB write) processing error", "block height", currentBlock.Number().Uint64(), "error", err.Error())
 				continue
 			}
 		case err := <-errCh:
@@ -234,7 +233,7 @@ func (sds *Service) Loop(chainEventCh chan core.ChainEvent) {
 			currentBlock := chainEvent.Block
 			parentBlock := sds.lastBlock.replace(currentBlock, sds.BlockChain)
 			if parentBlock == nil {
-				log.Error(fmt.Sprintf("Parent block is nil, skipping this block (%d)", currentBlock.Number()))
+				log.Error("Parent block is nil, skipping this block", "number", currentBlock.Number())
 				continue
 			}
 			sds.streamStateDiff(currentBlock, parentBlock.Root())
@@ -256,22 +255,22 @@ func (sds *Service) streamStateDiff(currentBlock *types.Block, parentRoot common
 	for ty, subs := range sds.Subscriptions {
 		params, ok := sds.SubscriptionTypes[ty]
 		if !ok {
-			log.Error(fmt.Sprintf("subscriptions type %s do not have a parameter set associated with them", ty.Hex()))
+			log.Error("no parameter set associated with this subscription", "subscription type", ty.Hex())
 			sds.closeType(ty)
 			continue
 		}
 		// create payload for this subscription type
 		payload, err := sds.processStateDiff(currentBlock, parentRoot, params)
 		if err != nil {
-			log.Error(fmt.Sprintf("statediff processing error a blockheight %d for subscriptions with parameters: %+v err: %s", currentBlock.Number().Uint64(), params, err.Error()))
+			log.Error("statediff processing error", "block height", currentBlock.Number().Uint64(), "parameters", params, "error", err.Error())
 			continue
 		}
 		for id, sub := range subs {
 			select {
 			case sub.PayloadChan <- *payload:
-				log.Debug(fmt.Sprintf("sending statediff payload at head height %d to subscription %s", currentBlock.Number(), id))
+				log.Debug("sending statediff payload at head", "height", currentBlock.Number(), "subscription id", id)
 			default:
-				log.Info(fmt.Sprintf("unable to send statediff payload to subscription %s; channel has no receiver", id))
+				log.Info("unable to send statediff payload; channel has no receiver", "subscription id", id)
 			}
 		}
 	}
@@ -282,7 +281,7 @@ func (sds *Service) streamStateDiff(currentBlock *types.Block, parentRoot common
 // This operation cannot be performed back past the point of db pruning; it requires an archival node for historical data
 func (sds *Service) StateDiffAt(blockNumber uint64, params Params) (*Payload, error) {
 	currentBlock := sds.BlockChain.GetBlockByNumber(blockNumber)
-	log.Info(fmt.Sprintf("sending state diff at block %d", blockNumber))
+	log.Info("sending state diff", "block height", blockNumber)
 	if blockNumber == 0 {
 		return sds.processStateDiff(currentBlock, common.Hash{}, params)
 	}
@@ -307,7 +306,7 @@ func (sds *Service) processStateDiff(currentBlock *types.Block, parentRoot commo
 	if err != nil {
 		return nil, err
 	}
-	log.Info(fmt.Sprintf("state diff object at block %d is %d bytes in length", currentBlock.Number().Uint64(), len(stateDiffRlp)))
+	log.Info("state diff size", "at block height", currentBlock.Number().Uint64(), "rlp byte size", len(stateDiffRlp))
 	return sds.newPayload(stateDiffRlp, currentBlock, params)
 }
 
@@ -340,7 +339,7 @@ func (sds *Service) newPayload(stateObject []byte, block *types.Block, params Pa
 // This operation cannot be performed back past the point of db pruning; it requires an archival node for historical data
 func (sds *Service) StateTrieAt(blockNumber uint64, params Params) (*Payload, error) {
 	currentBlock := sds.BlockChain.GetBlockByNumber(blockNumber)
-	log.Info(fmt.Sprintf("sending state trie at block %d", blockNumber))
+	log.Info("sending state trie", "block height", blockNumber)
 	return sds.processStateTrie(currentBlock, params)
 }
 
@@ -353,7 +352,7 @@ func (sds *Service) processStateTrie(block *types.Block, params Params) (*Payloa
 	if err != nil {
 		return nil, err
 	}
-	log.Info(fmt.Sprintf("state trie object at block %d is %d bytes in length", block.Number().Uint64(), len(stateTrieRlp)))
+	log.Info("state trie size", "at block height", block.Number().Uint64(), "rlp byte size", len(stateTrieRlp))
 	return sds.newPayload(stateTrieRlp, block, params)
 }
 
@@ -385,7 +384,7 @@ func (sds *Service) Subscribe(id rpc.ID, sub chan<- Payload, quitChan chan<- boo
 
 // Unsubscribe is used to unsubscribe from the service loop
 func (sds *Service) Unsubscribe(id rpc.ID) error {
-	log.Info(fmt.Sprintf("Unsubscribing subscription %s from the statediff service", id))
+	log.Info("Unsubscribing from the statediff service", "subscription id", id)
 	sds.Lock()
 	for ty := range sds.Subscriptions {
 		delete(sds.Subscriptions[ty], id)
@@ -405,14 +404,14 @@ func (sds *Service) Unsubscribe(id rpc.ID) error {
 }
 
 // Start is used to begin the service
-func (sds *Service) Start(*p2p.Server) error {
+func (sds *Service) Start() error {
 	log.Info("Starting statediff service")
 
 	chainEventCh := make(chan core.ChainEvent, chainEventChanSize)
 	go sds.Loop(chainEventCh)
 
 	if sds.enableWriteLoop {
-		log.Info("Starting statediff DB write loop", writeLoopParams)
+		log.Info("Starting statediff DB write loop", "params", writeLoopParams)
 		go sds.WriteLoop(make(chan core.ChainEvent, chainEventChanSize))
 	}
 
@@ -433,9 +432,9 @@ func (sds *Service) close() {
 		for id, sub := range subs {
 			select {
 			case sub.QuitChan <- true:
-				log.Info(fmt.Sprintf("closing subscription %s", id))
+				log.Info("closing subscription", "id", id)
 			default:
-				log.Info(fmt.Sprintf("unable to close subscription %s; channel has no receiver", id))
+				log.Info("unable to close subscription; channel has no receiver", "subscription id", id)
 			}
 			delete(sds.Subscriptions[ty], id)
 		}
@@ -459,16 +458,16 @@ func (sds *Service) closeType(subType common.Hash) {
 func sendNonBlockingQuit(id rpc.ID, sub Subscription) {
 	select {
 	case sub.QuitChan <- true:
-		log.Info(fmt.Sprintf("closing subscription %s", id))
+		log.Info("closing subscription", "id", id)
 	default:
-		log.Info("unable to close subscription %s; channel has no receiver", id)
+		log.Info("unable to close subscription; channel has no receiver", "subscription id", id)
 	}
 }
 
 // StreamCodeAndCodeHash subscription method for extracting all the codehash=>code mappings that exist in the trie at the provided height
 func (sds *Service) StreamCodeAndCodeHash(blockNumber uint64, outChan chan<- CodeAndCodeHash, quitChan chan<- bool) {
 	current := sds.BlockChain.GetBlockByNumber(blockNumber)
-	log.Info(fmt.Sprintf("sending code and codehash at block %d", blockNumber))
+	log.Info("sending code and codehash", "block height", blockNumber)
 	currentTrie, err := sds.BlockChain.StateCache().OpenTrie(current.Root())
 	if err != nil {
 		log.Error("error creating trie for block", "number", current.Number(), "err", err)
@@ -508,7 +507,7 @@ func (sds *Service) StreamCodeAndCodeHash(blockNumber uint64, outChan chan<- Cod
 // This operation cannot be performed back past the point of db pruning; it requires an archival node
 // for historical data
 func (sds *Service) WriteStateDiffAt(blockNumber uint64, params Params) error {
-	log.Info(fmt.Sprintf("writing state diff at block %d", blockNumber))
+	log.Info("writing state diff", "block height", blockNumber)
 	currentBlock := sds.BlockChain.GetBlockByNumber(blockNumber)
 	parentRoot := common.Hash{}
 	if blockNumber != 0 {
