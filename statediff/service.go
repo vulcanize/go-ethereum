@@ -67,8 +67,10 @@ type blockChain interface {
 
 // IService is the state-diffing service interface
 type IService interface {
-	// APIs(), Protocols(), Start() and Stop()
+	// Start() and Stop()
 	node.Lifecycle
+	// Method to getting API(s) for this service
+	APIs() []rpc.API
 	// Main event loop for processing state diffs
 	Loop(chainEventCh chan core.ChainEvent)
 	// Method to subscribe to receive state diff processing output
@@ -138,7 +140,7 @@ func New(stack *node.Node, ethServ *eth.Ethereum, dbParams *DBParams, enableWrit
 		indexer = ind.NewStateDiffIndexer(blockChain.Config(), db)
 	}
 	prom.Init()
-	serv := &Service{
+	sds := &Service{
 		Mutex:             sync.Mutex{},
 		BlockChain:        blockChain,
 		Builder:           NewBuilder(blockChain.StateCache()),
@@ -148,7 +150,8 @@ func New(stack *node.Node, ethServ *eth.Ethereum, dbParams *DBParams, enableWrit
 		indexer:           indexer,
 		enableWriteLoop:   enableWriteLoop,
 	}
-	stack.RegisterLifecycle(serv)
+	stack.RegisterLifecycle(sds)
+	stack.RegisterAPIs(sds.APIs())
 	return nil
 }
 
