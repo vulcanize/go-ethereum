@@ -32,6 +32,7 @@ import (
 	"github.com/ethereum/go-ethereum/p2p"
 	"github.com/ethereum/go-ethereum/rpc"
 	"github.com/ethereum/go-ethereum/statediff"
+	sdtypes "github.com/ethereum/go-ethereum/statediff/types"
 )
 
 // MockStateDiffService is a mock state diff service
@@ -172,6 +173,37 @@ func (sds *MockStateDiffService) newPayload(stateObject []byte, block *types.Blo
 	return payload, nil
 }
 
+// WriteStateDiffAt mock method
+func (sds *MockStateDiffService) WriteStateDiffAt(blockNumber uint64, params statediff.Params) error {
+	// TODO: something useful here
+	return nil
+}
+
+// Loop mock method
+func (sds *MockStateDiffService) WriteLoop(chan core.ChainEvent) {
+	//loop through chain events until no more
+	for {
+		select {
+		case block := <-sds.BlockChan:
+			currentBlock := block
+			parentBlock := <-sds.ParentBlockChan
+			parentHash := parentBlock.Hash()
+			if parentBlock == nil {
+				log.Error("Parent block is nil, skipping this block",
+					"parent block hash", parentHash.String(),
+					"current block number", currentBlock.Number())
+				continue
+			}
+			// TODO:
+			// sds.writeStateDiff(currentBlock, parentBlock.Root(), statediff.Params{})
+		case <-sds.QuitChan:
+			log.Debug("Quitting the statediff block channel")
+			sds.close()
+			return
+		}
+	}
+}
+
 // StateTrieAt mock method
 func (sds *MockStateDiffService) StateTrieAt(blockNumber uint64, params statediff.Params) (*statediff.Payload, error) {
 	currentBlock := sds.BlockChain.GetBlockByNumber(blockNumber)
@@ -276,7 +308,7 @@ func (sds *MockStateDiffService) closeType(subType common.Hash) {
 	delete(sds.SubscriptionTypes, subType)
 }
 
-func (sds *MockStateDiffService) StreamCodeAndCodeHash(blockNumber uint64, outChan chan<- statediff.CodeAndCodeHash, quitChan chan<- bool) {
+func (sds *MockStateDiffService) StreamCodeAndCodeHash(blockNumber uint64, outChan chan<- sdtypes.CodeAndCodeHash, quitChan chan<- bool) {
 	panic("implement me")
 }
 

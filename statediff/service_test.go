@@ -29,7 +29,7 @@ import (
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/rlp"
 	"github.com/ethereum/go-ethereum/rpc"
-	"github.com/ethereum/go-ethereum/statediff"
+	statediff "github.com/ethereum/go-ethereum/statediff"
 	"github.com/ethereum/go-ethereum/statediff/testhelpers/mocks"
 )
 

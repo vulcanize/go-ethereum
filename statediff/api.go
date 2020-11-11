@@ -21,6 +21,7 @@ import (
 
 	"github.com/ethereum/go-ethereum/log"
 	"github.com/ethereum/go-ethereum/rpc"
+	. "github.com/ethereum/go-ethereum/statediff/types"
 )
 
 // APIName is the namespace used for the state diffing service API
@@ -130,4 +131,9 @@ func (api *PublicStateDiffAPI) StreamCodeAndCodeHash(ctx context.Context, blockN
 	}()
 
 	return rpcSub, nil
+}
+
+// WriteStateDiffAt writes a state diff object directly to DB at the specific blockheight
+func (api *PublicStateDiffAPI) WriteStateDiffAt(ctx context.Context, blockNumber uint64, params Params) error {
+	return api.sds.WriteStateDiffAt(blockNumber, params)
 }

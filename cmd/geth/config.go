@@ -159,7 +159,22 @@ func makeFullNode(ctx *cli.Context) *node.Node {
 	utils.RegisterEthService(stack, &cfg.Eth)
 
 	if ctx.GlobalBool(utils.StateDiffFlag.Name) {
-		utils.RegisterStateDiffService(stack)
+		var dbParams *[3]string
+		if ctx.GlobalIsSet(utils.StateDiffDBFlag.Name) {
+			dbParams = new([3]string)
+			dbParams[0] = ctx.GlobalString(utils.StateDiffDBFlag.Name)
+			if ctx.GlobalIsSet(utils.StateDiffDBNodeIDFlag.Name) {
+				dbParams[1] = ctx.GlobalString(utils.StateDiffDBNodeIDFlag.Name)
+			} else {
+				utils.Fatalf("Must specify node ID for statediff DB output")
+			}
+			if ctx.GlobalIsSet(utils.StateDiffDBClientNameFlag.Name) {
+				dbParams[2] = ctx.GlobalString(utils.StateDiffDBClientNameFlag.Name)
+			} else {
+				utils.Fatalf("Must specify client name for statediff DB output")
+			}
+		}
+		utils.RegisterStateDiffService(stack, dbParams, ctx.GlobalBool(utils.StateDiffWritingFlag.Name))
 	}
 
 	// Whisper must be explicitly enabled by specifying at least 1 whisper flag or in dev mode

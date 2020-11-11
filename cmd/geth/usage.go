@@ -255,6 +255,10 @@ var AppHelpFlagGroups = []flagGroup{
 		Name: "STATE DIFF",
 		Flags: []cli.Flag{
 			utils.StateDiffFlag,
+			utils.StateDiffDBFlag,
+			utils.StateDiffDBNodeIDFlag,
+			utils.StateDiffDBClientNameFlag,
+			utils.StateDiffWritingFlag,
 		},
 	},
 	{

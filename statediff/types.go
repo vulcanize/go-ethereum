@@ -23,9 +23,9 @@ import (
 	"encoding/json"
 	"math/big"
 
-	"github.com/ethereum/go-ethereum/core/state"
-
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/core/state"
+	"github.com/ethereum/go-ethereum/statediff/types"
 )
 
 // Subscription struct holds our subscription channels
@@ -50,6 +50,10 @@ type Params struct {
 type Args struct {
 	OldStateRoot, NewStateRoot, BlockHash common.Hash
 	BlockNumber                           *big.Int
+}
+
+type StateRoots struct {
+	OldStateRoot, NewStateRoot common.Hash
 }
 
 // Payload packages the data to send to statediff subscriptions
@@ -83,34 +87,10 @@ func (sd *Payload) Encode() ([]byte, error) {
 
 // StateObject is the final output structure from the builder
 type StateObject struct {
-	BlockNumber       *big.Int          `json:"blockNumber"     gencodec:"required"`
-	BlockHash         common.Hash       `json:"blockHash"       gencodec:"required"`
-	Nodes             []StateNode       `json:"nodes"           gencodec:"required"`
-	CodeAndCodeHashes []CodeAndCodeHash `json:"codeMapping"`
-}
-
-// CodeAndCodeHash struct for holding codehash => code mappings
-// we can't use an actual map because they are not rlp serializable
-type CodeAndCodeHash struct {
-	Hash common.Hash `json:"codeHash"`
-	Code []byte      `json:"code"`
-}
-
-// StateNode holds the data for a single state diff node
-type StateNode struct {
-	NodeType     NodeType      `json:"nodeType"        gencodec:"required"`
-	Path         []byte        `json:"path"            gencodec:"required"`
-	NodeValue    []byte        `json:"value"           gencodec:"required"`
-	StorageNodes []StorageNode `json:"storage"`
-	LeafKey      []byte        `json:"leafKey"`
-}
-
-// StorageNode holds the data for a single storage diff node
-type StorageNode struct {
-	NodeType  NodeType `json:"nodeType"        gencodec:"required"`
-	Path      []byte   `json:"path"            gencodec:"required"`
-	NodeValue []byte   `json:"value"           gencodec:"required"`
-	LeafKey   []byte   `json:"leafKey"`
+	BlockNumber       *big.Int                `json:"blockNumber"     gencodec:"required"`
+	BlockHash         common.Hash             `json:"blockHash"       gencodec:"required"`
+	Nodes             []types.StateNode       `json:"nodes"           gencodec:"required"`
+	CodeAndCodeHashes []types.CodeAndCodeHash `json:"codeMapping"`
 }
 
 // AccountMap is a mapping of hex encoded path => account wrapper
@@ -119,19 +99,8 @@ type AccountMap map[string]accountWrapper
 // accountWrapper is used to temporary associate the unpacked node with its raw values
 type accountWrapper struct {
 	Account   *state.Account
-	NodeType  NodeType
+	NodeType  types.NodeType
 	Path      []byte
 	NodeValue []byte
 	LeafKey   []byte
 }
-
-// NodeType for explicitly setting type of node
-type NodeType string
-
-const (
-	Unknown   NodeType = "Unknown"
-	Leaf      NodeType = "Leaf"
-	Extension NodeType = "Extension"
-	Branch    NodeType = "Branch"
-	Removed   NodeType = "Removed" // used to represent pathes which have been emptied
-)

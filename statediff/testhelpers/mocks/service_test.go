@@ -30,10 +30,11 @@ import (
 	"github.com/ethereum/go-ethereum/rpc"
 	"github.com/ethereum/go-ethereum/statediff"
 	"github.com/ethereum/go-ethereum/statediff/testhelpers"
+	sdtypes "github.com/ethereum/go-ethereum/statediff/types"
 )
 
 var (
-	emptyStorage   = make([]statediff.StorageNode, 0)
+	emptyStorage   = make([]sdtypes.StorageNode, 0)
 	block0, block1 *types.Block
 	minerLeafKey   = testhelpers.AddressToLeafKey(common.HexToAddress("0x0"))
 	account1, _    = rlp.EncodeToBytes(state.Account{
@@ -94,24 +95,24 @@ func testSubscriptionAPI(t *testing.T) {
 	expectedStateDiff := statediff.StateObject{
 		BlockNumber: block1.Number(),
 		BlockHash:   block1.Hash(),
-		Nodes: []statediff.StateNode{
+		Nodes: []sdtypes.StateNode{
 			{
 				Path:         []byte{'\x05'},
-				NodeType:     statediff.Leaf,
+				NodeType:     sdtypes.Leaf,
 				LeafKey:      minerLeafKey,
 				NodeValue:    minerAccountLeafNode,
 				StorageNodes: emptyStorage,
 			},
 			{
 				Path:         []byte{'\x0e'},
-				NodeType:     statediff.Leaf,
+				NodeType:     sdtypes.Leaf,
 				LeafKey:      testhelpers.Account1LeafKey,
 				NodeValue:    account1LeafNode,
 				StorageNodes: emptyStorage,
 			},
 			{
 				Path:         []byte{'\x00'},
-				NodeType:     statediff.Leaf,
+				NodeType:     sdtypes.Leaf,
 				LeafKey:      testhelpers.BankLeafKey,
 				NodeValue:    bankAccountLeafNode,
 				StorageNodes: emptyStorage,
@@ -178,24 +179,24 @@ func testHTTPAPI(t *testing.T) {
 	expectedStateDiff := statediff.StateObject{
 		BlockNumber: block1.Number(),
 		BlockHash:   block1.Hash(),
-		Nodes: []statediff.StateNode{
+		Nodes: []sdtypes.StateNode{
 			{
 				Path:         []byte{'\x05'},
-				NodeType:     statediff.Leaf,
+				NodeType:     sdtypes.Leaf,
 				LeafKey:      minerLeafKey,
 				NodeValue:    minerAccountLeafNode,
 				StorageNodes: emptyStorage,
 			},
 			{
 				Path:         []byte{'\x0e'},
-				NodeType:     statediff.Leaf,
+				NodeType:     sdtypes.Leaf,
 				LeafKey:      testhelpers.Account1LeafKey,
 				NodeValue:    account1LeafNode,
 				StorageNodes: emptyStorage,
 			},
 			{
 				Path:         []byte{'\x00'},
-				NodeType:     statediff.Leaf,
+				NodeType:     sdtypes.Leaf,
 				LeafKey:      testhelpers.BankLeafKey,
 				NodeValue:    bankAccountLeafNode,
 				StorageNodes: emptyStorage,

@@ -761,6 +761,22 @@ var (
 		Name:  "statediff",
 		Usage: "Enables the processing of state diffs between each block",
 	}
+	StateDiffDBFlag = cli.StringFlag{
+		Name:  "statediff.db",
+		Usage: "PostgreSQL database connection string for writing state diffs",
+	}
+	StateDiffDBNodeIDFlag = cli.StringFlag{
+		Name:  "statediff.dbnodeid",
+		Usage: "Node ID to use when writing state diffs to database",
+	}
+	StateDiffDBClientNameFlag = cli.StringFlag{
+		Name:  "statediff.dbclientname",
+		Usage: "Client name to use when writing state diffs to database",
+	}
+	StateDiffWritingFlag = cli.BoolFlag{
+		Name:  "statediff.writing",
+		Usage: "Activates progressive writing of state diffs to database as new block are synced",
+	}
 )
 
 // MakeDataDir retrieves the currently requested data directory, terminating
@@ -1633,12 +1649,15 @@ func RegisterGraphQLService(stack *node.Node, endpoint string, cors, vhosts []st
 }
 
 // RegisterStateDiffService configures and registers a service to stream state diff data over RPC
-func RegisterStateDiffService(stack *node.Node) {
+// dbParams are: Postgres connection URI, Node ID, client name
+func RegisterStateDiffService(stack *node.Node, dbParams *[3]string, startWriteLoop bool) {
 	if err := stack.Register(func(ctx *node.ServiceContext) (node.Service, error) {
 		var ethServ *eth.Ethereum
-		ctx.Service(&ethServ)
-		blockChain := ethServ.BlockChain()
-		return statediff.NewStateDiffService(blockChain)
+		err := ctx.Service(&ethServ)
+		if err != nil {
+			return nil, err
+		}
+		return statediff.NewStateDiffService(ethServ, dbParams, startWriteLoop)
 	}); err != nil {
 		Fatalf("Failed to register State Diff Service", err)
 	}
