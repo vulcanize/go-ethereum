@@ -56,6 +56,13 @@ type CodeAndCodeHash struct {
 	Code []byte      `json:"code"`
 }
 
+// AddressAndAddressHash struct for holding keccak256(address) => address mapping
+type AddressAndAddressHash struct {
+	Hash    common.Hash    `json:"addressHash"`
+	Address common.Address `json:"address"`
+}
+
 type StateNodeSink func(StateNode) error
 type StorageNodeSink func(StorageNode) error
 type CodeSink func(CodeAndCodeHash) error
+type AddressSink func(AddressAndAddressHash) error

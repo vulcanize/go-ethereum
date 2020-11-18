@@ -94,10 +94,11 @@ func (sd *Payload) Encode() ([]byte, error) {
 
 // StateObject is the final output structure from the builder
 type StateObject struct {
-	BlockNumber       *big.Int                `json:"blockNumber"     gencodec:"required"`
-	BlockHash         common.Hash             `json:"blockHash"       gencodec:"required"`
-	Nodes             []types.StateNode       `json:"nodes"           gencodec:"required"`
-	CodeAndCodeHashes []types.CodeAndCodeHash `json:"codeMapping"`
+	BlockNumber             *big.Int                      `json:"blockNumber"     gencodec:"required"`
+	BlockHash               common.Hash                   `json:"blockHash"       gencodec:"required"`
+	Nodes                   []types.StateNode             `json:"nodes"           gencodec:"required"`
+	CodeAndCodeHashes       []types.CodeAndCodeHash       `json:"codeMapping"`
+	AddressAndAddressHashes []types.AddressAndAddressHash `json:"addressMapping"`
 }
 
 // AccountMap is a mapping of hex encoded path => account wrapper

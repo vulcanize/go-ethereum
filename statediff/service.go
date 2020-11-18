@@ -542,10 +542,13 @@ func (sds *Service) writeStateDiff(block *types.Block, parentRoot common.Hash, p
 	codeOutput := func(c CodeAndCodeHash) error {
 		return sds.indexer.PushCodeAndCodeHash(tx, c)
 	}
+	addressOutput := func(a AddressAndAddressHash) error {
+		return sds.indexer.PushAddressAndAddressHash(tx, a)
+	}
 	err = sds.Builder.WriteStateDiffObject(StateRoots{
 		NewStateRoot: block.Root(),
 		OldStateRoot: parentRoot,
-	}, params, output, codeOutput)
+	}, params, output, codeOutput, addressOutput)
 
 	// allow dereferencing of parent, keep current locked as it should be the next parent
 	sds.BlockChain.UnlockTrie(parentRoot)
