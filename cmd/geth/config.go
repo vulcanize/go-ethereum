@@ -191,8 +191,17 @@ func makeFullNode(ctx *cli.Context) (*node.Node, ethapi.Backend) {
 			} else {
 				utils.Fatalf("Must specify client name for statediff DB output")
 			}
+		} else {
+			if ctx.GlobalBool(utils.StateDiffWritingFlag.Name) {
+				utils.Fatalf("Must pass DB parameters if enabling statediff write loop")
+			}
 		}
-		utils.RegisterStateDiffService(stack, backend, dbParams, ctx.GlobalBool(utils.StateDiffWritingFlag.Name))
+		params := statediff.ServiceParams{
+			DBParams:        dbParams,
+			EnableWriteLoop: ctx.GlobalBool(utils.StateDiffWritingFlag.Name),
+			NumWorkers:      ctx.GlobalUint(utils.StateDiffWorkersFlag.Name),
+		}
+		utils.RegisterStateDiffService(stack, backend, params)
 	}
 
 	// Configure GraphQL if requested
