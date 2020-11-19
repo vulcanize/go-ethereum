@@ -94,6 +94,7 @@ func testErrorInChainEventLoop(t *testing.T) {
 		QuitChan:          serviceQuit,
 		Subscriptions:     make(map[common.Hash]map[rpc.ID]statediff.Subscription),
 		SubscriptionTypes: make(map[common.Hash]statediff.Params),
+		BlockCache:        statediff.NewBlockCache(1),
 	}
 	payloadChan := make(chan statediff.Payload, 2)
 	quitChan := make(chan bool)
@@ -177,6 +178,7 @@ func testErrorInBlockLoop(t *testing.T) {
 		QuitChan:          make(chan bool),
 		Subscriptions:     make(map[common.Hash]map[rpc.ID]statediff.Subscription),
 		SubscriptionTypes: make(map[common.Hash]statediff.Params),
+		BlockCache:        statediff.NewBlockCache(1),
 	}
 	payloadChan := make(chan statediff.Payload)
 	quitChan := make(chan bool)
@@ -256,6 +258,7 @@ func testErrorInStateDiffAt(t *testing.T) {
 		QuitChan:          make(chan bool),
 		Subscriptions:     make(map[common.Hash]map[rpc.ID]statediff.Subscription),
 		SubscriptionTypes: make(map[common.Hash]statediff.Params),
+		BlockCache:        statediff.NewBlockCache(1),
 	}
 	stateDiffPayload, err := service.StateDiffAt(testBlock1.NumberU64(), defaultParams)
 	if err != nil {

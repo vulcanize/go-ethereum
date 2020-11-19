@@ -116,7 +116,7 @@ type Service struct {
 	// A mapping of subscription params rlp hash to the corresponding subscription params
 	SubscriptionTypes map[common.Hash]Params
 	// Cache the last block so that we can avoid having to lookup the next block's parent
-	lastBlock blockCache
+	BlockCache blockCache
 	// Whether or not we have any subscribers; only if we do, do we processes state diffs
 	subscribers int32
 	// Interface for publishing statediffs as PG-IPLD objects
@@ -134,7 +134,7 @@ type blockCache struct {
 	maxSize uint
 }
 
-func newBlockCache(max uint) blockCache {
+func NewBlockCache(max uint) blockCache {
 	return blockCache{
 		blocks:  make(map[common.Hash]*types.Block),
 		maxSize: max,
@@ -173,7 +173,7 @@ func New(stack *node.Node, ethServ *eth.Ethereum, params ServiceParams) error {
 		QuitChan:          make(chan bool),
 		Subscriptions:     make(map[common.Hash]map[rpc.ID]Subscription),
 		SubscriptionTypes: make(map[common.Hash]Params),
-		lastBlock:         newBlockCache(workers),
+		BlockCache:        NewBlockCache(workers),
 		indexer:           indexer,
 		enableWriteLoop:   params.EnableWriteLoop,
 		numWorkers:        workers,
@@ -230,7 +230,7 @@ func (sds *Service) WriteLoop(chainEventCh chan core.ChainEvent) {
 			log.Debug("(WriteLoop) Event received from chainEventCh", "event", chainEvent)
 			currentBlock := chainEvent.Block
 			statediffMetrics.lastEventHeight.Update(int64(currentBlock.Number().Uint64()))
-			parentBlock := sds.lastBlock.replace(currentBlock, sds.BlockChain)
+			parentBlock := sds.BlockCache.replace(currentBlock, sds.BlockChain)
 			if parentBlock == nil {
 				log.Error("Parent block is nil, skipping this block", "block height", currentBlock.Number())
 				continue
@@ -271,7 +271,7 @@ func (sds *Service) Loop(chainEventCh chan core.ChainEvent) {
 				continue
 			}
 			currentBlock := chainEvent.Block
-			parentBlock := sds.lastBlock.replace(currentBlock, sds.BlockChain)
+			parentBlock := sds.BlockCache.replace(currentBlock, sds.BlockChain)
 			if parentBlock == nil {
 				log.Error("Parent block is nil, skipping this block", "number", currentBlock.Number())
 				continue
