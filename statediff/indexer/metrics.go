@@ -2,9 +2,9 @@ package indexer
 
 import (
 	"database/sql"
+	"strings"
 
 	"github.com/ethereum/go-ethereum/metrics"
-	"strings"
 )
 
 const (
@@ -24,7 +24,7 @@ func metricName(subsystem, name string) string {
 	return strings.Join(parts, "/")
 }
 
-type indexerMetricsContext struct {
+type indexerMetricsHandles struct {
 	// The total number of processed blocks
 	blocks metrics.Counter
 	// The total number of processed transactions
@@ -45,8 +45,8 @@ type indexerMetricsContext struct {
 	tStateStoreCodeProcessing metrics.Timer
 }
 
-func RegisterIndexerMetrics(reg metrics.Registry) indexerMetricsContext {
-	ctx := indexerMetricsContext{
+func RegisterIndexerMetrics(reg metrics.Registry) indexerMetricsHandles {
+	ctx := indexerMetricsHandles{
 		blocks:                    metrics.NewCounter(),
 		transactions:              metrics.NewCounter(),
 		receipts:                  metrics.NewCounter(),
