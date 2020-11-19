@@ -32,6 +32,7 @@ import (
 	"github.com/ethereum/go-ethereum/eth"
 	"github.com/ethereum/go-ethereum/event"
 	"github.com/ethereum/go-ethereum/log"
+	"github.com/ethereum/go-ethereum/metrics"
 	"github.com/ethereum/go-ethereum/node"
 	"github.com/ethereum/go-ethereum/p2p"
 	"github.com/ethereum/go-ethereum/rlp"
@@ -54,6 +55,8 @@ var writeLoopParams = Params{
 	IncludeTD:                true,
 	IncludeCode:              true,
 }
+
+var statediffMetrics = RegisterStatediffMetrics(metrics.DefaultRegistry)
 
 type blockChain interface {
 	SubscribeChainEvent(ch chan<- core.ChainEvent) event.Subscription
@@ -193,8 +196,10 @@ func (sds *Service) WriteLoop(chainEventCh chan core.ChainEvent) {
 		select {
 		//Notify chain event channel of events
 		case chainEvent := <-chainEventCh:
+			statediffMetrics.writeLoopChannelLen.Update(int64(len(chainEventCh)))
 			log.Debug("(WriteLoop) Event received from chainEventCh", "event", chainEvent)
 			currentBlock := chainEvent.Block
+			statediffMetrics.lastEventHeight.Update(int64(currentBlock.Number().Uint64()))
 			parentBlock := sds.lastBlock.replace(currentBlock, sds.BlockChain)
 			if parentBlock == nil {
 				log.Error("Parent block is nil, skipping this block", "block height", currentBlock.Number())
@@ -205,6 +210,8 @@ func (sds *Service) WriteLoop(chainEventCh chan core.ChainEvent) {
 				log.Error("statediff (DB write) processing error", "block height", currentBlock.Number().Uint64(), "error", err.Error())
 				continue
 			}
+			// TODO: how to handle with concurrent workers
+			statediffMetrics.lastStatediffHeight.Update(int64(currentBlock.Number().Uint64()))
 		case err := <-errCh:
 			log.Warn("Error from chain event subscription", "error", err)
 			sds.close()
@@ -226,6 +233,7 @@ func (sds *Service) Loop(chainEventCh chan core.ChainEvent) {
 		select {
 		//Notify chain event channel of events
 		case chainEvent := <-chainEventCh:
+			statediffMetrics.serviceLoopChannelLen.Update(int64(len(chainEventCh)))
 			log.Debug("Event received from chainEventCh", "event", chainEvent)
 			// if we don't have any subscribers, do not process a statediff
 			if atomic.LoadInt32(&sds.subscribers) == 0 {
