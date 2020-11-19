@@ -218,16 +218,34 @@ func (lbc *blockCache) replace(currentBlock *types.Block, bc blockChain) *types.
 	return parentBlock
 }
 
+type workerParams struct {
+	chainEventCh <-chan core.ChainEvent
+	errCh        <-chan error
+	wg           *sync.WaitGroup
+	id           uint
+}
+
 func (sds *Service) WriteLoop(chainEventCh chan core.ChainEvent) {
 	chainEventSub := sds.BlockChain.SubscribeChainEvent(chainEventCh)
 	defer chainEventSub.Unsubscribe()
 	errCh := chainEventSub.Err()
+	var wg sync.WaitGroup
+	wg.Add(int(sds.numWorkers))
+	for worker := uint(0); worker < sds.numWorkers; worker++ {
+		params := workerParams{chainEventCh: chainEventCh, errCh: errCh, wg: &wg, id: worker}
+		go sds.writeLoopWorker(params)
+	}
+	wg.Wait()
+}
+
+func (sds *Service) writeLoopWorker(params workerParams) {
+	defer params.wg.Done()
 	for {
 		select {
 		//Notify chain event channel of events
-		case chainEvent := <-chainEventCh:
-			statediffMetrics.writeLoopChannelLen.Update(int64(len(chainEventCh)))
-			log.Debug("(WriteLoop) Event received from chainEventCh", "event", chainEvent)
+		case chainEvent := <-params.chainEventCh:
+			statediffMetrics.writeLoopChannelLen.Update(int64(len(params.chainEventCh)))
+			log.Debug("WriteLoop(): chain event received", "event", chainEvent)
 			currentBlock := chainEvent.Block
 			statediffMetrics.lastEventHeight.Update(int64(currentBlock.Number().Uint64()))
 			parentBlock := sds.BlockCache.replace(currentBlock, sds.BlockChain)
@@ -237,12 +255,12 @@ func (sds *Service) WriteLoop(chainEventCh chan core.ChainEvent) {
 			}
 			err := sds.writeStateDiff(currentBlock, parentBlock.Root(), writeLoopParams)
 			if err != nil {
-				log.Error("statediff (DB write) processing error", "block height", currentBlock.Number().Uint64(), "error", err.Error())
+				log.Error("statediff (DB write) processing error", "block height", currentBlock.Number().Uint64(), "error", err.Error(), "worker", params.id)
 				continue
 			}
 			// TODO: how to handle with concurrent workers
 			statediffMetrics.lastStatediffHeight.Update(int64(currentBlock.Number().Uint64()))
-		case err := <-errCh:
+		case err := <-params.errCh:
 			log.Warn("Error from chain event subscription", "error", err)
 			sds.close()
 			return
@@ -456,9 +474,7 @@ func (sds *Service) Start() error {
 	if sds.enableWriteLoop {
 		log.Info("Starting statediff DB write loop", "params", writeLoopParams)
 		chainEventCh := make(chan core.ChainEvent, chainEventChanSize)
-		for worker := uint(0); worker < sds.numWorkers; worker++ {
-			go sds.WriteLoop(chainEventCh)
-		}
+		go sds.WriteLoop(chainEventCh)
 	}
 
 	return nil
