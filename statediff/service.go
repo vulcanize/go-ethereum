@@ -253,9 +253,10 @@ func (sds *Service) writeLoopWorker(params workerParams) {
 				log.Error("Parent block is nil, skipping this block", "block height", currentBlock.Number())
 				continue
 			}
+			log.Info("Writing state diff", "block height", currentBlock.Number().Uint64(), "worker", params.id)
 			err := sds.writeStateDiff(currentBlock, parentBlock.Root(), writeLoopParams)
 			if err != nil {
-				log.Error("statediff (DB write) processing error", "block height", currentBlock.Number().Uint64(), "error", err.Error(), "worker", params.id)
+				log.Error("statediff.Service.WriteLoop: processing error", "block height", currentBlock.Number().Uint64(), "error", err.Error(), "worker", params.id)
 				continue
 			}
 			// TODO: how to handle with concurrent workers
@@ -282,7 +283,7 @@ func (sds *Service) Loop(chainEventCh chan core.ChainEvent) {
 		//Notify chain event channel of events
 		case chainEvent := <-chainEventCh:
 			statediffMetrics.serviceLoopChannelLen.Update(int64(len(chainEventCh)))
-			log.Debug("Event received from chainEventCh", "event", chainEvent)
+			log.Debug("Loop(): chain event received", "event", chainEvent)
 			// if we don't have any subscribers, do not process a statediff
 			if atomic.LoadInt32(&sds.subscribers) == 0 {
 				log.Debug("Currently no subscribers to the statediffing service; processing is halted")
@@ -291,7 +292,7 @@ func (sds *Service) Loop(chainEventCh chan core.ChainEvent) {
 			currentBlock := chainEvent.Block
 			parentBlock := sds.BlockCache.replace(currentBlock, sds.BlockChain)
 			if parentBlock == nil {
-				log.Error("Parent block is nil, skipping this block", "number", currentBlock.Number())
+				log.Error("Parent block is nil, skipping this block", "block height", currentBlock.Number())
 				continue
 			}
 			sds.streamStateDiff(currentBlock, parentBlock.Root())
@@ -532,7 +533,7 @@ func (sds *Service) StreamCodeAndCodeHash(blockNumber uint64, outChan chan<- Cod
 	log.Info("sending code and codehash", "block height", blockNumber)
 	currentTrie, err := sds.BlockChain.StateCache().OpenTrie(current.Root())
 	if err != nil {
-		log.Error("error creating trie for block", "number", current.Number(), "err", err)
+		log.Error("error creating trie for block", "block height", current.Number(), "err", err)
 		close(quitChan)
 		return
 	}
@@ -580,7 +581,7 @@ func (sds *Service) WriteStateDiffAt(blockNumber uint64, params Params) error {
 
 // Writes a state diff from the current block, parent state root, and provided params
 func (sds *Service) writeStateDiff(block *types.Block, parentRoot common.Hash, params Params) error {
-	log.Info("Writing state diff", "block height", block.Number().Uint64())
+	// log.Info("Writing state diff", "block height", block.Number().Uint64())
 	var totalDifficulty *big.Int
 	var receipts types.Receipts
 	if params.IncludeTD {
