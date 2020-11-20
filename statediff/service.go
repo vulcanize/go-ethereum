@@ -22,6 +22,7 @@ import (
 	"strconv"
 	"sync"
 	"sync/atomic"
+	"time"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core"
@@ -73,7 +74,7 @@ type IService interface {
 	// Main event loop for processing state diffs
 	Loop(chainEventCh chan core.ChainEvent)
 	// Method to subscribe to receive state diff processing output
-	Subscribe(id rpc.ID, sub chan<- Payload, quitChanogr chan<- bool, params Params)
+	Subscribe(id rpc.ID, sub chan<- Payload, quitChan chan<- bool, params Params)
 	// Method to unsubscribe from state diff processing
 	Unsubscribe(id rpc.ID) error
 	// Method to get state diff object at specific block
@@ -414,6 +415,7 @@ func (sds *Service) Start() error {
 	if sds.enableWriteLoop {
 		log.Info("Starting statediff DB write loop", "params", writeLoopParams)
 		go sds.WriteLoop(make(chan core.ChainEvent, chainEventChanSize))
+		go sds.indexer.ReportDBMetrics(5*time.Second, sds.QuitChan)
 	}
 
 	return nil

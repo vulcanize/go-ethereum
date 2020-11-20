@@ -41,13 +41,17 @@ import (
 	sdtypes "github.com/ethereum/go-ethereum/statediff/types"
 )
 
-var indexerMetrics = RegisterIndexerMetrics(metrics.DefaultRegistry)
+var (
+	indexerMetrics = RegisterIndexerMetrics(metrics.DefaultRegistry)
+	dbMetrics      = RegisterDBMetrics(metrics.DefaultRegistry)
+)
 
 // Indexer interface to allow substitution of mocks for testing
 type Indexer interface {
 	PushBlock(block *types.Block, receipts types.Receipts, totalDifficulty *big.Int) (*BlockTx, error)
 	PushStateNode(tx *BlockTx, stateNode sdtypes.StateNode) error
 	PushCodeAndCodeHash(tx *BlockTx, codeAndCodeHash sdtypes.CodeAndCodeHash) error
+	ReportDBMetrics(delay time.Duration, quit <-chan bool)
 }
 
 // StateDiffIndexer satisfies the Indexer interface for ethereum statediff objects
@@ -70,6 +74,25 @@ type BlockTx struct {
 	headerID    int64
 	err         error
 	Close       func() error
+}
+
+// Reporting function to run as goroutine
+func (sdi *StateDiffIndexer) ReportDBMetrics(delay time.Duration, quit <-chan bool) {
+	if !metrics.Enabled {
+		return
+	}
+	ticker := time.NewTicker(delay)
+	go func() {
+		for {
+			select {
+			case <-ticker.C:
+				dbMetrics.Update(sdi.dbWriter.db.Stats())
+			case <-quit:
+				ticker.Stop()
+				return
+			}
+		}
+	}()
 }
 
 // Pushes and indexes block data in database, except state & storage nodes (includes header, uncles, transactions & receipts)
