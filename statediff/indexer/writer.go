@@ -17,9 +17,9 @@
 package indexer
 
 import (
-	"github.com/ethereum/go-ethereum/common"
 	"github.com/jmoiron/sqlx"
 
+	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/statediff/indexer/models"
 	"github.com/ethereum/go-ethereum/statediff/indexer/postgres"
 	"github.com/ethereum/go-ethereum/statediff/indexer/shared"
@@ -29,7 +29,7 @@ var (
 	nullHash = common.HexToHash("0x0000000000000000000000000000000000000000000000000000000000000000")
 )
 
-// Indexer satisfies the Indexer interface for ethereum
+// Handles processing and writing of indexed IPLD objects to Postgres
 type PostgresCIDWriter struct {
 	db *postgres.DB
 }

@@ -14,6 +14,8 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
+// This package provides an interface for pushing and indexing IPLD objects into a Postgres database
+// Metrics for reporting processing and connection stats are defined in ./metrics.go
 package indexer
 
 import (
