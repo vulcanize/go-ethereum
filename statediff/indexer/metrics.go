@@ -8,7 +8,7 @@ import (
 )
 
 const (
-	indexerNamespace = "ipld_eth_indexer" // FIXME: "statediff"?
+	indexerNamespace = "indexer"
 )
 
 // Build a fully qualified metric name
