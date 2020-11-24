@@ -200,8 +200,9 @@ func (sds *Service) APIs() []rpc.API {
 	}
 }
 
-// Return the parent block of currentBlock, using the cached block if available
-func (lbc *blockCache) replace(currentBlock *types.Block, bc blockChain) *types.Block {
+// Return the parent block of currentBlock, using the cached block if available;
+// and cache the passed block
+func (lbc *blockCache) getParentBlock(currentBlock *types.Block, bc blockChain) *types.Block {
 	lbc.Lock()
 	parentHash := currentBlock.ParentHash()
 	var parentBlock *types.Block
@@ -248,7 +249,7 @@ func (sds *Service) writeLoopWorker(params workerParams) {
 			log.Debug("WriteLoop(): chain event received", "event", chainEvent)
 			currentBlock := chainEvent.Block
 			statediffMetrics.lastEventHeight.Update(int64(currentBlock.Number().Uint64()))
-			parentBlock := sds.BlockCache.replace(currentBlock, sds.BlockChain)
+			parentBlock := sds.BlockCache.getParentBlock(currentBlock, sds.BlockChain)
 			if parentBlock == nil {
 				log.Error("Parent block is nil, skipping this block", "block height", currentBlock.Number())
 				continue
@@ -290,7 +291,7 @@ func (sds *Service) Loop(chainEventCh chan core.ChainEvent) {
 				continue
 			}
 			currentBlock := chainEvent.Block
-			parentBlock := sds.BlockCache.replace(currentBlock, sds.BlockChain)
+			parentBlock := sds.BlockCache.getParentBlock(currentBlock, sds.BlockChain)
 			if parentBlock == nil {
 				log.Error("Parent block is nil, skipping this block", "block height", currentBlock.Number())
 				continue
