@@ -22,6 +22,7 @@ import (
 	"strconv"
 	"sync"
 	"sync/atomic"
+	"time"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core"
@@ -40,7 +41,6 @@ import (
 	ind "github.com/ethereum/go-ethereum/statediff/indexer"
 	nodeinfo "github.com/ethereum/go-ethereum/statediff/indexer/node"
 	"github.com/ethereum/go-ethereum/statediff/indexer/postgres"
-	"github.com/ethereum/go-ethereum/statediff/indexer/prom"
 	. "github.com/ethereum/go-ethereum/statediff/types"
 )
 
@@ -74,7 +74,7 @@ type IService interface {
 	// Main event loop for processing state diffs
 	Loop(chainEventCh chan core.ChainEvent)
 	// Method to subscribe to receive state diff processing output
-	Subscribe(id rpc.ID, sub chan<- Payload, quitChanogr chan<- bool, params Params)
+	Subscribe(id rpc.ID, sub chan<- Payload, quitChan chan<- bool, params Params)
 	// Method to unsubscribe from state diff processing
 	Unsubscribe(id rpc.ID) error
 	// Method to get state diff object at specific block
@@ -139,7 +139,6 @@ func New(stack *node.Node, ethServ *eth.Ethereum, dbParams *DBParams, enableWrit
 		}
 		indexer = ind.NewStateDiffIndexer(blockChain.Config(), db)
 	}
-	prom.Init()
 	sds := &Service{
 		Mutex:             sync.Mutex{},
 		BlockChain:        blockChain,
@@ -416,6 +415,7 @@ func (sds *Service) Start() error {
 	if sds.enableWriteLoop {
 		log.Info("Starting statediff DB write loop", "params", writeLoopParams)
 		go sds.WriteLoop(make(chan core.ChainEvent, chainEventChanSize))
+		go sds.indexer.ReportDBMetrics(5*time.Second, sds.QuitChan)
 	}
 
 	return nil
@@ -521,7 +521,7 @@ func (sds *Service) WriteStateDiffAt(blockNumber uint64, params Params) error {
 
 // Writes a state diff from the current block, parent state root, and provided params
 func (sds *Service) writeStateDiff(block *types.Block, parentRoot common.Hash, params Params) error {
-	log.Info("writing state diff", "block height", block.Number().Uint64())
+	log.Info("Writing state diff", "block height", block.Number().Uint64())
 	var totalDifficulty *big.Int
 	var receipts types.Receipts
 	if params.IncludeTD {
