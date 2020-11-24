@@ -44,7 +44,7 @@ func RegisterStatediffMetrics(reg metrics.Registry) statediffMetricsHandles {
 		serviceLoopChannelLen: metrics.NewGauge(),
 		writeLoopChannelLen:   metrics.NewGauge(),
 	}
-	subsys := "" // todo
+	subsys := "service"
 	reg.Register(metricName(subsys, "last_sync_height"), ctx.lastSyncHeight)
 	reg.Register(metricName(subsys, "last_event_height"), ctx.lastEventHeight)
 	reg.Register(metricName(subsys, "last_statediff_height"), ctx.lastStatediffHeight)
