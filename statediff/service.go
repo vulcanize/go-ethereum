@@ -276,11 +276,11 @@ func (sds *Service) writeLoopWorker(params workerParams) {
 			// TODO: how to handle with concurrent workers
 			statediffMetrics.lastStatediffHeight.Update(int64(currentBlock.Number().Uint64()))
 		case err := <-params.errCh:
-			log.Warn("Error from chain event subscription", "error", err)
+			log.Warn("Error from chain event subscription", "error", err, "worker", params.id)
 			sds.close()
 			return
 		case <-sds.QuitChan:
-			log.Info("Quitting the statediff writing process")
+			log.Info("Quitting the statediff writing process", "worker", params.id)
 			sds.close()
 			return
 		}
@@ -480,11 +480,8 @@ func (sds *Service) Unsubscribe(id rpc.ID) error {
 func (sds *Service) Start() error {
 	log.Info("Starting statediff service")
 
-	{
-		// TODO: also use worker pool here?
-		chainEventCh := make(chan core.ChainEvent, chainEventChanSize)
-		go sds.Loop(chainEventCh)
-	}
+	chainEventCh := make(chan core.ChainEvent, chainEventChanSize)
+	go sds.Loop(chainEventCh)
 
 	if sds.enableWriteLoop {
 		log.Info("Starting statediff DB write loop", "params", writeLoopParams)
