@@ -8,7 +8,7 @@ import (
 )
 
 const (
-	indexerNamespace = "indexer"
+	namespace = "statediff"
 )
 
 // Build a fully qualified metric name
@@ -16,9 +16,9 @@ func metricName(subsystem, name string) string {
 	if name == "" {
 		return ""
 	}
-	parts := []string{indexerNamespace, name}
+	parts := []string{namespace, name}
 	if subsystem != "" {
-		parts = []string{indexerNamespace, subsystem, name}
+		parts = []string{namespace, subsystem, name}
 	}
 	// Prometheus uses _ but geth metrics uses / and replaces
 	return strings.Join(parts, "/")
@@ -57,7 +57,7 @@ func RegisterIndexerMetrics(reg metrics.Registry) indexerMetricsHandles {
 		tTxAndRecProcessing:       metrics.NewTimer(),
 		tStateStoreCodeProcessing: metrics.NewTimer(),
 	}
-	subsys := "" // todo
+	subsys := "indexer"
 	reg.Register(metricName(subsys, "blocks"), ctx.blocks)
 	reg.Register(metricName(subsys, "transactions"), ctx.transactions)
 	reg.Register(metricName(subsys, "receipts"), ctx.receipts)
