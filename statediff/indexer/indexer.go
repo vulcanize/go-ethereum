@@ -31,16 +31,15 @@ import (
 	"github.com/ethereum/go-ethereum/metrics"
 	"github.com/ethereum/go-ethereum/params"
 	"github.com/ethereum/go-ethereum/rlp"
-
-	node "github.com/ipfs/go-ipld-format"
-	"github.com/jmoiron/sqlx"
-	"github.com/multiformats/go-multihash"
-
 	"github.com/ethereum/go-ethereum/statediff/indexer/ipfs/ipld"
 	"github.com/ethereum/go-ethereum/statediff/indexer/models"
 	"github.com/ethereum/go-ethereum/statediff/indexer/postgres"
 	"github.com/ethereum/go-ethereum/statediff/indexer/shared"
 	sdtypes "github.com/ethereum/go-ethereum/statediff/types"
+
+	node "github.com/ipfs/go-ipld-format"
+	"github.com/jmoiron/sqlx"
+	"github.com/multiformats/go-multihash"
 )
 
 var (
@@ -135,21 +134,21 @@ func (sdi *StateDiffIndexer) PushBlock(block *types.Block, receipts types.Receip
 				shared.Rollback(tx)
 				panic(p)
 			} else {
-				tDiff := time.Now().Sub(t)
+				tDiff := time.Since(t)
 				indexerMetrics.tStateStoreCodeProcessing.Update(tDiff)
 				traceMsg += fmt.Sprintf("state, storage, and code storage processing time: %s\r\n", tDiff.String())
 				t = time.Now()
 				err = tx.Commit()
-				tDiff = time.Now().Sub(t)
+				tDiff = time.Since(t)
 				indexerMetrics.tPostgresCommit.Update(tDiff)
 				traceMsg += fmt.Sprintf("postgres transaction commit duration: %s\r\n", tDiff.String())
 			}
-			traceMsg += fmt.Sprintf(" TOTAL PROCESSING DURATION: %s\r\n", time.Now().Sub(start).String())
+			traceMsg += fmt.Sprintf(" TOTAL PROCESSING DURATION: %s\r\n", time.Since(start).String())
 			log.Debug(traceMsg)
 			return err
 		},
 	}
-	tDiff := time.Now().Sub(t)
+	tDiff := time.Since(t)
 	indexerMetrics.tFreePostgres.Update(tDiff)
 
 	traceMsg += fmt.Sprintf("time spent waiting for free postgres tx: %s:\r\n", tDiff.String())
@@ -160,7 +159,7 @@ func (sdi *StateDiffIndexer) PushBlock(block *types.Block, receipts types.Receip
 	if err != nil {
 		return nil, err
 	}
-	tDiff = time.Now().Sub(t)
+	tDiff = time.Since(t)
 	indexerMetrics.tHeaderProcessing.Update(tDiff)
 	traceMsg += fmt.Sprintf("header processing time: %s\r\n", tDiff.String())
 	t = time.Now()
@@ -168,7 +167,7 @@ func (sdi *StateDiffIndexer) PushBlock(block *types.Block, receipts types.Receip
 	if err := sdi.processUncles(tx, headerID, height, uncleNodes); err != nil {
 		return nil, err
 	}
-	tDiff = time.Now().Sub(t)
+	tDiff = time.Since(t)
 	indexerMetrics.tUncleProcessing.Update(tDiff)
 	traceMsg += fmt.Sprintf("uncle processing time: %s\r\n", tDiff.String())
 	t = time.Now()
@@ -185,7 +184,7 @@ func (sdi *StateDiffIndexer) PushBlock(block *types.Block, receipts types.Receip
 	}); err != nil {
 		return nil, err
 	}
-	tDiff = time.Now().Sub(t)
+	tDiff = time.Since(t)
 	indexerMetrics.tTxAndRecProcessing.Update(tDiff)
 	traceMsg += fmt.Sprintf("tx and receipt processing time: %s\r\n", tDiff.String())
 	t = time.Now()
@@ -241,7 +240,7 @@ func (sdi *StateDiffIndexer) processUncles(tx *sqlx.Tx, headerID int64, blockNum
 	return nil
 }
 
-// processArgs bundles arugments to processReceiptsAndTxs
+// processArgs bundles arguments to processReceiptsAndTxs
 type processArgs struct {
 	headerID     int64
 	blockNumber  *big.Int

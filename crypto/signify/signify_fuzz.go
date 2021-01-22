@@ -25,7 +25,6 @@ import (
 	"log"
 	"os"
 	"os/exec"
-	"runtime"
 
 	fuzz "github.com/google/gofuzz"
 	"github.com/jedisct1/go-minisign"

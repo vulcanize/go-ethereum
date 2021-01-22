@@ -21,21 +21,21 @@ import (
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/params"
-	"github.com/ipfs/go-cid"
-	"github.com/ipfs/go-ipfs-blockstore"
-	"github.com/ipfs/go-ipfs-ds-help"
-
-	ind "github.com/ethereum/go-ethereum/statediff/indexer"
+	"github.com/ethereum/go-ethereum/statediff/indexer"
 	"github.com/ethereum/go-ethereum/statediff/indexer/mocks"
-	eth "github.com/ethereum/go-ethereum/statediff/indexer/models"
+	"github.com/ethereum/go-ethereum/statediff/indexer/models"
 	"github.com/ethereum/go-ethereum/statediff/indexer/postgres"
 	"github.com/ethereum/go-ethereum/statediff/indexer/shared"
+
+	"github.com/ipfs/go-cid"
+	blockstore "github.com/ipfs/go-ipfs-blockstore"
+	dshelp "github.com/ipfs/go-ipfs-ds-help"
 )
 
 var (
 	db        *postgres.DB
 	err       error
-	indexer   *ind.StateDiffIndexer
+	ind       *indexer.StateDiffIndexer
 	ipfsPgGet = `SELECT data FROM public.blocks
 					WHERE key = $1`
 )
@@ -51,9 +51,9 @@ func setup(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	indexer = ind.NewStateDiffIndexer(params.MainnetChainConfig, db)
-	var tx *ind.BlockTx
-	tx, err = indexer.PushBlock(
+	ind = indexer.NewStateDiffIndexer(params.MainnetChainConfig, db)
+	var tx *indexer.BlockTx
+	tx, err = ind.PushBlock(
 		mocks.MockBlock,
 		mocks.MockReceipts,
 		mocks.MockBlock.Difficulty())
@@ -62,7 +62,7 @@ func setup(t *testing.T) {
 	}
 	defer tx.Close()
 	for _, node := range mocks.StateDiffs {
-		err = indexer.PushStateNode(tx, node)
+		err = ind.PushStateNode(tx, node)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -72,7 +72,7 @@ func setup(t *testing.T) {
 }
 
 func tearDown(t *testing.T) {
-	ind.TearDownDB(t, db)
+	indexer.TearDownDB(t, db)
 }
 
 func TestPublishAndIndexer(t *testing.T) {
@@ -195,7 +195,7 @@ func TestPublishAndIndexer(t *testing.T) {
 		setup(t)
 		defer tearDown(t)
 		// check that state nodes were properly indexed and published
-		stateNodes := make([]eth.StateNodeModel, 0)
+		stateNodes := make([]models.StateNodeModel, 0)
 		pgStr := `SELECT state_cids.id, state_cids.cid, state_cids.state_leaf_key, state_cids.node_type, state_cids.state_path, state_cids.header_id
 				FROM eth.state_cids INNER JOIN eth.header_cids ON (state_cids.header_id = header_cids.id)
 				WHERE header_cids.block_number = $1`
@@ -217,7 +217,7 @@ func TestPublishAndIndexer(t *testing.T) {
 				t.Fatal(err)
 			}
 			pgStr = `SELECT * from eth.state_accounts WHERE state_id = $1`
-			var account eth.StateAccountModel
+			var account models.StateAccountModel
 			err = db.Get(&account, pgStr, stateNode.ID)
 			if err != nil {
 				t.Fatal(err)
@@ -227,7 +227,7 @@ func TestPublishAndIndexer(t *testing.T) {
 				shared.ExpectEqual(t, stateNode.StateKey, common.BytesToHash(mocks.ContractLeafKey).Hex())
 				shared.ExpectEqual(t, stateNode.Path, []byte{'\x06'})
 				shared.ExpectEqual(t, data, mocks.ContractLeafNode)
-				shared.ExpectEqual(t, account, eth.StateAccountModel{
+				shared.ExpectEqual(t, account, models.StateAccountModel{
 					ID:          account.ID,
 					StateID:     stateNode.ID,
 					Balance:     "0",
@@ -241,7 +241,7 @@ func TestPublishAndIndexer(t *testing.T) {
 				shared.ExpectEqual(t, stateNode.StateKey, common.BytesToHash(mocks.AccountLeafKey).Hex())
 				shared.ExpectEqual(t, stateNode.Path, []byte{'\x0c'})
 				shared.ExpectEqual(t, data, mocks.AccountLeafNode)
-				shared.ExpectEqual(t, account, eth.StateAccountModel{
+				shared.ExpectEqual(t, account, models.StateAccountModel{
 					ID:          account.ID,
 					StateID:     stateNode.ID,
 					Balance:     "1000",
@@ -251,14 +251,13 @@ func TestPublishAndIndexer(t *testing.T) {
 				})
 			}
 		}
-		pgStr = `SELECT * from eth.state_accounts WHERE state_id = $1`
 	})
 
 	t.Run("Publish and index storage IPLDs in a single tx", func(t *testing.T) {
 		setup(t)
 		defer tearDown(t)
 		// check that storage nodes were properly indexed
-		storageNodes := make([]eth.StorageNodeWithStateKeyModel, 0)
+		storageNodes := make([]models.StorageNodeWithStateKeyModel, 0)
 		pgStr := `SELECT storage_cids.cid, state_cids.state_leaf_key, storage_cids.storage_leaf_key, storage_cids.node_type, storage_cids.storage_path
 				FROM eth.storage_cids, eth.state_cids, eth.header_cids
 				WHERE storage_cids.state_id = state_cids.id
@@ -269,7 +268,7 @@ func TestPublishAndIndexer(t *testing.T) {
 			t.Fatal(err)
 		}
 		shared.ExpectEqual(t, len(storageNodes), 1)
-		shared.ExpectEqual(t, storageNodes[0], eth.StorageNodeWithStateKeyModel{
+		shared.ExpectEqual(t, storageNodes[0], models.StorageNodeWithStateKeyModel{
 			CID:        mocks.StorageCID.String(),
 			NodeType:   2,
 			StorageKey: common.BytesToHash(mocks.StorageLeafKey).Hex(),

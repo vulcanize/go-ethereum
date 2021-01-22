@@ -24,9 +24,9 @@ import (
 	"reflect"
 	"unicode"
 
-	"gopkg.in/urfave/cli.v1"
 	"github.com/ethereum/go-ethereum/eth/downloader"
 	"github.com/ethereum/go-ethereum/statediff"
+	"gopkg.in/urfave/cli.v1"
 
 	"github.com/ethereum/go-ethereum/cmd/utils"
 	"github.com/ethereum/go-ethereum/eth"

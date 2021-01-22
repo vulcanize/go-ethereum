@@ -132,7 +132,7 @@ type CacheConfig struct {
 	Preimages           bool          // Whether to store preimage of trie key to the disk
 
 	SnapshotWait bool // Wait for snapshot construction on startup. TODO(karalabe): This is a dirty hack for testing, nuke it
-	StateDiffing        bool          // Whether or not the statediffing service is running
+	StateDiffing bool // Whether or not the statediffing service is running
 }
 
 // defaultCacheConfig are the default caching values if none are specified by the

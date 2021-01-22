@@ -117,8 +117,8 @@ func (met *dbMetricsHandles) Update(stats sql.DBStats) {
 	met.open.Update(int64(stats.OpenConnections))
 	met.inUse.Update(int64(stats.InUse))
 	met.idle.Update(int64(stats.Idle))
-	met.waitedFor.Inc(int64(stats.WaitCount))
-	met.blockedMilliseconds.Inc(int64(stats.WaitDuration.Milliseconds()))
-	met.closedMaxIdle.Inc(int64(stats.MaxIdleClosed))
-	met.closedMaxLifetime.Inc(int64(stats.MaxLifetimeClosed))
+	met.waitedFor.Inc(stats.WaitCount)
+	met.blockedMilliseconds.Inc(stats.WaitDuration.Milliseconds())
+	met.closedMaxIdle.Inc(stats.MaxIdleClosed)
+	met.closedMaxLifetime.Inc(stats.MaxLifetimeClosed)
 }

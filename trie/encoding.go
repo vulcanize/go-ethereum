@@ -60,8 +60,8 @@ func hexToCompact(hex []byte) []byte {
 // needed for the representation
 func hexToCompactInPlace(hex []byte) int {
 	var (
-		hexLen= len(hex) // length of the hex input
-		firstByte= byte(0)
+		hexLen    = len(hex) // length of the hex input
+		firstByte = byte(0)
 	)
 	// Check if we have a terminator there
 	if hexLen > 0 && hex[hexLen-1] == 16 {
@@ -69,9 +69,9 @@ func hexToCompactInPlace(hex []byte) int {
 		hexLen-- // last part was the terminator, ignore that
 	}
 	var (
-		binLen= hexLen/2 + 1
-		ni= 0 // index in hex
-		bi= 1 // index in bin (compact)
+		binLen = hexLen/2 + 1
+		ni     = 0 // index in hex
+		bi     = 1 // index in bin (compact)
 	)
 	if hexLen&1 == 1 {
 		firstByte |= 1 << 4 // odd flag

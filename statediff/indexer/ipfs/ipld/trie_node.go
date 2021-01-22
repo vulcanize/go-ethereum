@@ -25,6 +25,12 @@ import (
 	node "github.com/ipfs/go-ipld-format"
 )
 
+const (
+	extension = "extension"
+	leaf      = "leaf"
+	branch    = "branch"
+)
+
 // TrieNode is the general abstraction for
 //ethereum IPLD trie nodes.
 type TrieNode struct {
@@ -68,17 +74,23 @@ func decodeTrieNode(c cid.Cid, b []byte,
 			return nil, err
 		}
 
-		if nodeKind == "extension" {
+		if nodeKind == extension {
 			elements, err = parseTrieNodeExtension(decoded, codec)
+			if err != nil {
+				return nil, err
+			}
 		}
-		if nodeKind == "leaf" {
+		if nodeKind == leaf {
 			elements, err = leafDecoder(decoded)
+			if err != nil {
+				return nil, err
+			}
 		}
-		if nodeKind != "extension" && nodeKind != "leaf" {
+		if nodeKind != extension && nodeKind != leaf {
 			return nil, fmt.Errorf("unexpected nodeKind returned from decoder")
 		}
 	case 17:
-		nodeKind = "branch"
+		nodeKind = branch
 		elements, err = parseTrieNodeBranch(i, codec)
 		if err != nil {
 			return nil, err
@@ -102,22 +114,22 @@ func decodeCompactKey(i []interface{}) (string, []interface{}, error) {
 
 	switch first[0] / 16 {
 	case '\x00':
-		return "extension", []interface{}{
+		return extension, []interface{}{
 			nibbleToByte(first)[2:],
 			last,
 		}, nil
 	case '\x01':
-		return "extension", []interface{}{
+		return extension, []interface{}{
 			nibbleToByte(first)[1:],
 			last,
 		}, nil
 	case '\x02':
-		return "leaf", []interface{}{
+		return leaf, []interface{}{
 			nibbleToByte(first)[2:],
 			last,
 		}, nil
 	case '\x03':
-		return "leaf", []interface{}{
+		return leaf, []interface{}{
 			nibbleToByte(first)[1:],
 			last,
 		}, nil
@@ -167,11 +179,11 @@ func parseTrieNodeBranch(i []interface{}, codec uint64) ([]interface{}, error) {
 // and returning the object found as well as the remaining path to traverse
 func (t *TrieNode) Resolve(p []string) (interface{}, []string, error) {
 	switch t.nodeKind {
-	case "extension":
+	case extension:
 		return t.resolveTrieNodeExtension(p)
-	case "leaf":
+	case leaf:
 		return t.resolveTrieNodeLeaf(p)
-	case "branch":
+	case branch:
 		return t.resolveTrieNodeBranch(p)
 	default:
 		return nil, nil, fmt.Errorf("nodeKind case not implemented")
@@ -188,13 +200,13 @@ func (t *TrieNode) Tree(p string, depth int) []string {
 	var out []string
 
 	switch t.nodeKind {
-	case "extension":
+	case extension:
 		var val string
 		for _, e := range t.elements[0].([]byte) {
 			val += fmt.Sprintf("%x", e)
 		}
 		return []string{val}
-	case "branch":
+	case branch:
 		for i, elem := range t.elements {
 			if _, ok := elem.(*cid.Cid); ok {
 				out = append(out, fmt.Sprintf("%x", i))
@@ -261,9 +273,9 @@ func (t *TrieNode) MarshalJSON() ([]byte, error) {
 	var out map[string]interface{}
 
 	switch t.nodeKind {
-	case "extension":
+	case extension:
 		fallthrough
-	case "leaf":
+	case leaf:
 		var hexPrefix string
 		for _, e := range t.elements[0].([]byte) {
 			hexPrefix += fmt.Sprintf("%x", e)
@@ -285,9 +297,9 @@ func (t *TrieNode) MarshalJSON() ([]byte, error) {
 			hexPrefix: t.elements[1],
 		}
 
-	case "branch":
+	case branch:
 		out = map[string]interface{}{
-			"type": "branch",
+			"type": branch,
 			"0":    t.elements[0],
 			"1":    t.elements[1],
 			"2":    t.elements[2],
@@ -432,7 +444,7 @@ func getHexIndex(s string) int {
 		return -1
 	}
 
-	c := byte(s[0])
+	c := s[0]
 	switch {
 	case '0' <= c && c <= '9':
 		return int(c - '0')
