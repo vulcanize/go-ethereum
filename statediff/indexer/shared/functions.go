@@ -22,14 +22,14 @@ import (
 	"github.com/ethereum/go-ethereum/statediff/indexer/ipfs/ipld"
 
 	"github.com/ipfs/go-cid"
-	"github.com/ipfs/go-ipfs-blockstore"
-	"github.com/ipfs/go-ipfs-ds-help"
-	node "github.com/ipfs/go-ipld-format"
+	blockstore "github.com/ipfs/go-ipfs-blockstore"
+	dshelp "github.com/ipfs/go-ipfs-ds-help"
+	format "github.com/ipfs/go-ipld-format"
 	"github.com/jmoiron/sqlx"
 	"github.com/multiformats/go-multihash"
 )
 
-// HandleZeroAddrPointer will return an emtpy string for a nil address pointer
+// HandleZeroAddrPointer will return an empty string for a nil address pointer
 func HandleZeroAddrPointer(to *common.Address) string {
 	if to == nil {
 		return ""
@@ -53,7 +53,7 @@ func Rollback(tx *sqlx.Tx) {
 }
 
 // PublishIPLD is used to insert an IPLD into Postgres blockstore with the provided tx
-func PublishIPLD(tx *sqlx.Tx, i node.Node) error {
+func PublishIPLD(tx *sqlx.Tx, i format.Node) error {
 	dbKey := dshelp.MultihashToDsKey(i.Cid().Hash())
 	prefixedKey := blockstore.BlockPrefix.String() + dbKey.String()
 	raw := i.RawData()

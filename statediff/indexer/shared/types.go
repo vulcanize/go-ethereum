@@ -16,9 +16,11 @@
 
 package shared
 
-import "github.com/ethereum/go-ethereum/common"
-import "github.com/ethereum/go-ethereum/statediff/types"
-import "github.com/ethereum/go-ethereum/statediff/indexer/models"
+import (
+	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/statediff/indexer/models"
+	"github.com/ethereum/go-ethereum/statediff/types"
+)
 
 // Trie struct used to flag node as leaf or not
 type TrieNode struct {
