@@ -51,16 +51,15 @@ type UncleModel struct {
 
 // TxModel is the db model for eth.transaction_cids
 type TxModel struct {
-	ID         int64  `db:"id"`
-	HeaderID   int64  `db:"header_id"`
-	Index      int64  `db:"index"`
-	TxHash     string `db:"tx_hash"`
-	CID        string `db:"cid"`
-	MhKey      string `db:"mh_key"`
-	Dst        string `db:"dst"`
-	Src        string `db:"src"`
-	Data       []byte `db:"tx_data"`
-	Deployment bool   `db:"deployment"`
+	ID       int64  `db:"id"`
+	HeaderID int64  `db:"header_id"`
+	Index    int64  `db:"index"`
+	TxHash   string `db:"tx_hash"`
+	CID      string `db:"cid"`
+	MhKey    string `db:"mh_key"`
+	Dst      string `db:"dst"`
+	Src      string `db:"src"`
+	Data     []byte `db:"tx_data"`
 }
 
 // ReceiptModel is the db model for eth.receipt_cids
@@ -69,6 +68,8 @@ type ReceiptModel struct {
 	TxID         int64          `db:"tx_id"`
 	CID          string         `db:"cid"`
 	MhKey        string         `db:"mh_key"`
+	PostStatus   uint64         `db:"post_status"`
+	PostState    string         `db:"post_state"`
 	Contract     string         `db:"contract"`
 	ContractHash string         `db:"contract_hash"`
 	LogContracts pq.StringArray `db:"log_contracts"`

@@ -183,10 +183,31 @@ func TestPublishAndIndexer(t *testing.T) {
 			switch c {
 			case mocks.Rct1CID.String():
 				shared.ExpectEqual(t, data, mocks.MockReceipts.GetRlp(0))
+				var postStatus uint64
+				pgStr = `SELECT post_status FROM eth.receipt_cids WHERE cid = $1`
+				err = db.Get(&postStatus, pgStr, c)
+				if err != nil {
+					t.Fatal(err)
+				}
+				shared.ExpectEqual(t, postStatus, mocks.ExpectedPostStatus)
 			case mocks.Rct2CID.String():
 				shared.ExpectEqual(t, data, mocks.MockReceipts.GetRlp(1))
+				var postState string
+				pgStr = `SELECT post_state FROM eth.receipt_cids WHERE cid = $1`
+				err = db.Get(&postState, pgStr, c)
+				if err != nil {
+					t.Fatal(err)
+				}
+				shared.ExpectEqual(t, postState, mocks.ExpectedPostState1)
 			case mocks.Rct3CID.String():
 				shared.ExpectEqual(t, data, mocks.MockReceipts.GetRlp(2))
+				var postState string
+				pgStr = `SELECT post_state FROM eth.receipt_cids WHERE cid = $1`
+				err = db.Get(&postState, pgStr, c)
+				if err != nil {
+					t.Fatal(err)
+				}
+				shared.ExpectEqual(t, postState, mocks.ExpectedPostState2)
 			}
 		}
 	})

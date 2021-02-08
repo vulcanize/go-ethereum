@@ -299,27 +299,18 @@ func (sdi *StateDiffIndexer) processReceiptsAndTxs(tx *sqlx.Tx, args processArgs
 		// this is the contract address if this receipt is for a contract creation tx
 		contract := shared.HandleZeroAddr(receipt.ContractAddress)
 		var contractHash string
-		isDeployment := contract != ""
-		if isDeployment {
+		if contract != "" {
 			contractHash = crypto.Keccak256Hash(common.HexToAddress(contract).Bytes()).String()
-			// if tx is a contract deployment, publish the data (code)
-			// codec doesn't matter in this case sine we are not interested in the cid and the db key is multihash-derived
-			// TODO: THE DATA IS NOT DIRECTLY THE CONTRACT CODE; THERE IS A MISSING PROCESSING STEP HERE
-			// the contractHash => contract code is not currently correct
-			if _, err := shared.PublishRaw(tx, ipld.MEthStorageTrie, multihash.KECCAK_256, trx.Data()); err != nil {
-				return err
-			}
 		}
 		// index tx first so that the receipt can reference it by FK
 		txModel := models.TxModel{
-			Dst:        shared.HandleZeroAddrPointer(trx.To()),
-			Src:        shared.HandleZeroAddr(from),
-			TxHash:     trx.Hash().String(),
-			Index:      int64(i),
-			Data:       trx.Data(),
-			Deployment: isDeployment,
-			CID:        txNode.Cid().String(),
-			MhKey:      shared.MultihashKeyFromCID(txNode.Cid()),
+			Dst:    shared.HandleZeroAddrPointer(trx.To()),
+			Src:    shared.HandleZeroAddr(from),
+			TxHash: trx.Hash().String(),
+			Index:  int64(i),
+			Data:   trx.Data(),
+			CID:    txNode.Cid().String(),
+			MhKey:  shared.MultihashKeyFromCID(txNode.Cid()),
 		}
 		txID, err := sdi.dbWriter.upsertTransactionCID(tx, txModel, args.headerID)
 		if err != nil {
@@ -336,6 +327,11 @@ func (sdi *StateDiffIndexer) processReceiptsAndTxs(tx *sqlx.Tx, args processArgs
 			LogContracts: logContracts,
 			CID:          rctNode.Cid().String(),
 			MhKey:        shared.MultihashKeyFromCID(rctNode.Cid()),
+		}
+		if len(receipt.PostState) == 0 {
+			rctModel.PostStatus = receipt.Status
+		} else {
+			rctModel.PostState = common.Bytes2Hex(receipt.PostState)
 		}
 		if err := sdi.dbWriter.upsertReceiptCID(tx, rctModel, txID); err != nil {
 			return err
