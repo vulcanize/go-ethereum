@@ -51,20 +51,23 @@ var (
 		Difficulty:  big.NewInt(5000000),
 		Extra:       []byte{},
 	}
-	MockTransactions, MockReceipts, SenderAddr = createTransactionsAndReceipts()
-	ReceiptsRlp, _                             = rlp.EncodeToBytes(MockReceipts)
-	MockBlock                                  = types.NewBlock(&MockHeader, MockTransactions, nil, MockReceipts, new(trie.Trie))
-	MockHeaderRlp, _                           = rlp.EncodeToBytes(MockBlock.Header())
-	Address                                    = common.HexToAddress("0xaE9BEa628c4Ce503DcFD7E305CaB4e29E7476592")
-	AnotherAddress                             = common.HexToAddress("0xaE9BEa628c4Ce503DcFD7E305CaB4e29E7476593")
-	ContractAddress                            = crypto.CreateAddress(SenderAddr, MockTransactions[2].Nonce())
-	ContractHash                               = crypto.Keccak256Hash(ContractAddress.Bytes()).String()
-	MockContractByteCode                       = []byte{0, 1, 2, 3, 4, 5}
-	mockTopic11                                = common.HexToHash("0x04")
-	mockTopic12                                = common.HexToHash("0x06")
-	mockTopic21                                = common.HexToHash("0x05")
-	mockTopic22                                = common.HexToHash("0x07")
-	MockLog1                                   = &types.Log{
+	MockTransactions, MockReceipts, SenderAddr        = createTransactionsAndReceipts()
+	ReceiptsRlp, _                                    = rlp.EncodeToBytes(MockReceipts)
+	MockBlock                                         = types.NewBlock(&MockHeader, MockTransactions, nil, MockReceipts, new(trie.Trie))
+	MockHeaderRlp, _                                  = rlp.EncodeToBytes(MockBlock.Header())
+	Address                                           = common.HexToAddress("0xaE9BEa628c4Ce503DcFD7E305CaB4e29E7476592")
+	AnotherAddress                                    = common.HexToAddress("0xaE9BEa628c4Ce503DcFD7E305CaB4e29E7476593")
+	ContractAddress                                   = crypto.CreateAddress(SenderAddr, MockTransactions[2].Nonce())
+	ContractHash                                      = crypto.Keccak256Hash(ContractAddress.Bytes()).String()
+	MockContractByteCode                              = []byte{0, 1, 2, 3, 4, 5}
+	mockTopic11                                       = common.HexToHash("0x04")
+	mockTopic12                                       = common.HexToHash("0x06")
+	mockTopic21                                       = common.HexToHash("0x05")
+	mockTopic22                                       = common.HexToHash("0x07")
+	ExpectedPostStatus                         uint64 = 1
+	ExpectedPostState1                                = common.Bytes2Hex(common.HexToHash("0x1").Bytes())
+	ExpectedPostState2                                = common.Bytes2Hex(common.HexToHash("0x2").Bytes())
+	MockLog1                                          = &types.Log{
 		Address: Address,
 		Topics:  []common.Hash{mockTopic11, mockTopic12},
 		Data:    []byte{},
@@ -181,7 +184,7 @@ func createTransactionsAndReceipts() (types.Transactions, types.Receipts, common
 		log.Crit(err.Error())
 	}
 	// make receipts
-	mockReceipt1 := types.NewReceipt(common.HexToHash("0x0").Bytes(), false, 50)
+	mockReceipt1 := types.NewReceipt(nil, false, 50)
 	mockReceipt1.Logs = []*types.Log{MockLog1}
 	mockReceipt1.TxHash = signedTrx1.Hash()
 	mockReceipt2 := types.NewReceipt(common.HexToHash("0x1").Bytes(), false, 100)
