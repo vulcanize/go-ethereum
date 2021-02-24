@@ -130,6 +130,12 @@ func (sds *MockStateDiffService) StateDiffAt(blockNumber uint64, params statedif
 	return sds.processStateDiff(currentBlock, parentBlock.Root(), params)
 }
 
+// StateDiffFor mock method
+func (sds *MockStateDiffService) StateDiffFor(blockHash common.Hash, params statediff.Params) (*statediff.Payload, error) {
+	// TODO: something useful here
+	return nil, nil
+}
+
 // processStateDiff method builds the state diff payload from the current block, parent state root, and provided params
 func (sds *MockStateDiffService) processStateDiff(currentBlock *types.Block, parentRoot common.Hash, params statediff.Params) (*statediff.Payload, error) {
 	stateDiff, err := sds.Builder.BuildStateDiffObject(statediff.Args{
@@ -175,6 +181,12 @@ func (sds *MockStateDiffService) newPayload(stateObject []byte, block *types.Blo
 
 // WriteStateDiffAt mock method
 func (sds *MockStateDiffService) WriteStateDiffAt(blockNumber uint64, params statediff.Params) error {
+	// TODO: something useful here
+	return nil
+}
+
+// WriteStateDiffFor mock method
+func (sds *MockStateDiffService) WriteStateDiffFor(blockHash common.Hash, params statediff.Params) error {
 	// TODO: something useful here
 	return nil
 }
