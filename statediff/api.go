@@ -19,6 +19,8 @@ package statediff
 import (
 	"context"
 
+	"github.com/ethereum/go-ethereum/common"
+
 	"github.com/ethereum/go-ethereum/log"
 	"github.com/ethereum/go-ethereum/rpc"
 	. "github.com/ethereum/go-ethereum/statediff/types"
@@ -95,6 +97,11 @@ func (api *PublicStateDiffAPI) StateDiffAt(ctx context.Context, blockNumber uint
 	return api.sds.StateDiffAt(blockNumber, params)
 }
 
+// StateDiffFor returns a state diff payload for the specific blockhash
+func (api *PublicStateDiffAPI) StateDiffFor(ctx context.Context, blockHash common.Hash, params Params) (*Payload, error) {
+	return api.sds.StateDiffFor(blockHash, params)
+}
+
 // StateTrieAt returns a state trie payload at the specific blockheight
 func (api *PublicStateDiffAPI) StateTrieAt(ctx context.Context, blockNumber uint64, params Params) (*Payload, error) {
 	return api.sds.StateTrieAt(blockNumber, params)
@@ -136,4 +143,9 @@ func (api *PublicStateDiffAPI) StreamCodeAndCodeHash(ctx context.Context, blockN
 // WriteStateDiffAt writes a state diff object directly to DB at the specific blockheight
 func (api *PublicStateDiffAPI) WriteStateDiffAt(ctx context.Context, blockNumber uint64, params Params) error {
 	return api.sds.WriteStateDiffAt(blockNumber, params)
+}
+
+// WriteStateDiffFor writes a state diff object directly to DB for the specific block hash
+func (api *PublicStateDiffAPI) WriteStateDiffFor(ctx context.Context, blockHash common.Hash, params Params) error {
+	return api.sds.WriteStateDiffFor(blockHash, params)
 }

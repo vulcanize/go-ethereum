@@ -81,12 +81,16 @@ type IService interface {
 	Unsubscribe(id rpc.ID) error
 	// Method to get state diff object at specific block
 	StateDiffAt(blockNumber uint64, params Params) (*Payload, error)
+	// Method to get state diff object at specific block
+	StateDiffFor(blockHash common.Hash, params Params) (*Payload, error)
 	// Method to get state trie object at specific block
 	StateTrieAt(blockNumber uint64, params Params) (*Payload, error)
 	// Method to stream out all code and codehash pairs
 	StreamCodeAndCodeHash(blockNumber uint64, outChan chan<- CodeAndCodeHash, quitChan chan<- bool)
 	// Method to write state diff object directly to DB
 	WriteStateDiffAt(blockNumber uint64, params Params) error
+	// Method to write state diff object directly to DB
+	WriteStateDiffFor(blockHash common.Hash, params Params) error
 	// Event loop for progressively processing and writing diffs directly to DB
 	WriteLoop(chainEventCh chan core.ChainEvent)
 }
@@ -362,6 +366,18 @@ func (sds *Service) StateDiffAt(blockNumber uint64, params Params) (*Payload, er
 	return sds.processStateDiff(currentBlock, parentBlock.Root(), params)
 }
 
+// StateDiffFor returns a state diff object payload for the specific blockhash
+// This operation cannot be performed back past the point of db pruning; it requires an archival node for historical data
+func (sds *Service) StateDiffFor(blockHash common.Hash, params Params) (*Payload, error) {
+	currentBlock := sds.BlockChain.GetBlockByHash(blockHash)
+	log.Info("sending state diff", "block hash", blockHash)
+	if currentBlock.NumberU64() == 0 {
+		return sds.processStateDiff(currentBlock, common.Hash{}, params)
+	}
+	parentBlock := sds.BlockChain.GetBlockByHash(currentBlock.ParentHash())
+	return sds.processStateDiff(currentBlock, parentBlock.Root(), params)
+}
+
 // processStateDiff method builds the state diff payload from the current block, parent state root, and provided params
 func (sds *Service) processStateDiff(currentBlock *types.Block, parentRoot common.Hash, params Params) (*Payload, error) {
 	stateDiff, err := sds.Builder.BuildStateDiffObject(Args{
@@ -584,6 +600,19 @@ func (sds *Service) WriteStateDiffAt(blockNumber uint64, params Params) error {
 	currentBlock := sds.BlockChain.GetBlockByNumber(blockNumber)
 	parentRoot := common.Hash{}
 	if blockNumber != 0 {
+		parentBlock := sds.BlockChain.GetBlockByHash(currentBlock.ParentHash())
+		parentRoot = parentBlock.Root()
+	}
+	return sds.writeStateDiff(currentBlock, parentRoot, params)
+}
+
+// WriteStateDiffFor writes a state diff for the specific blockhash directly to the database
+// This operation cannot be performed back past the point of db pruning; it requires an archival node
+// for historical data
+func (sds *Service) WriteStateDiffFor(blockHash common.Hash, params Params) error {
+	currentBlock := sds.BlockChain.GetBlockByHash(blockHash)
+	parentRoot := common.Hash{}
+	if currentBlock.NumberU64() != 0 {
 		parentBlock := sds.BlockChain.GetBlockByHash(currentBlock.ParentHash())
 		parentRoot = parentBlock.Root()
 	}
