@@ -18,8 +18,9 @@ package indexer_test
 
 import (
 	"bytes"
-	"github.com/ethereum/go-ethereum/core/types"
 	"testing"
+
+	"github.com/ethereum/go-ethereum/core/types"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/params"
@@ -42,11 +43,11 @@ var (
 	ind       *indexer.StateDiffIndexer
 	ipfsPgGet = `SELECT data FROM public.blocks
 					WHERE key = $1`
-	tx1, tx2, tx3, rct1, rct2, rct3 []byte
-	mockBlock *types.Block
+	tx1, tx2, tx3, rct1, rct2, rct3      []byte
+	mockBlock                            *types.Block
 	headerCID, trx1CID, trx2CID, trx3CID cid.Cid
-	rct1CID, rct2CID, rct3CID cid.Cid
-	state1CID, state2CID, storageCID cid.Cid
+	rct1CID, rct2CID, rct3CID            cid.Cid
+	state1CID, state2CID, storageCID     cid.Cid
 )
 
 func expectTrue(t *testing.T, value bool) {
@@ -90,15 +91,15 @@ func init() {
 	copy(rct3, buf.Bytes())
 	buf.Reset()
 
-	headerCID, _  = ipld.RawdataToCid(ipld.MEthHeader, mocks.MockHeaderRlp, multihash.KECCAK_256)
-	trx1CID, _    = ipld.RawdataToCid(ipld.MEthTx, tx1, multihash.KECCAK_256)
-	trx2CID, _    = ipld.RawdataToCid(ipld.MEthTx, tx2, multihash.KECCAK_256)
-	trx3CID, _    = ipld.RawdataToCid(ipld.MEthTx, tx3, multihash.KECCAK_256)
-	rct1CID, _    = ipld.RawdataToCid(ipld.MEthTxReceipt, rct1, multihash.KECCAK_256)
-	rct2CID, _    = ipld.RawdataToCid(ipld.MEthTxReceipt, rct2, multihash.KECCAK_256)
-	rct3CID, _    = ipld.RawdataToCid(ipld.MEthTxReceipt, rct3, multihash.KECCAK_256)
-	state1CID, _  = ipld.RawdataToCid(ipld.MEthStateTrie, mocks.ContractLeafNode, multihash.KECCAK_256)
-	state2CID, _  = ipld.RawdataToCid(ipld.MEthStateTrie, mocks.AccountLeafNode, multihash.KECCAK_256)
+	headerCID, _ = ipld.RawdataToCid(ipld.MEthHeader, mocks.MockHeaderRlp, multihash.KECCAK_256)
+	trx1CID, _ = ipld.RawdataToCid(ipld.MEthTx, tx1, multihash.KECCAK_256)
+	trx2CID, _ = ipld.RawdataToCid(ipld.MEthTx, tx2, multihash.KECCAK_256)
+	trx3CID, _ = ipld.RawdataToCid(ipld.MEthTx, tx3, multihash.KECCAK_256)
+	rct1CID, _ = ipld.RawdataToCid(ipld.MEthTxReceipt, rct1, multihash.KECCAK_256)
+	rct2CID, _ = ipld.RawdataToCid(ipld.MEthTxReceipt, rct2, multihash.KECCAK_256)
+	rct3CID, _ = ipld.RawdataToCid(ipld.MEthTxReceipt, rct3, multihash.KECCAK_256)
+	state1CID, _ = ipld.RawdataToCid(ipld.MEthStateTrie, mocks.ContractLeafNode, multihash.KECCAK_256)
+	state2CID, _ = ipld.RawdataToCid(ipld.MEthStateTrie, mocks.AccountLeafNode, multihash.KECCAK_256)
 	storageCID, _ = ipld.RawdataToCid(ipld.MEthStorageTrie, mocks.StorageLeafNode, multihash.KECCAK_256)
 }
 
