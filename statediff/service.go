@@ -23,6 +23,8 @@ import (
 	"sync"
 	"sync/atomic"
 
+	"github.com/ethereum/go-ethereum/eth/ethconfig"
+
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core"
 	"github.com/ethereum/go-ethereum/core/state"
@@ -146,13 +148,13 @@ func NewBlockCache(max uint) blockCache {
 
 // New creates a new statediff.Service
 // func New(stack *node.Node, ethServ *eth.Ethereum, dbParams *DBParams, enableWriteLoop bool) error {
-func New(stack *node.Node, ethServ *eth.Ethereum, params ServiceParams) error {
+func New(stack *node.Node, ethServ *eth.Ethereum, cfg *ethconfig.Config, params ServiceParams) error {
 	blockChain := ethServ.BlockChain()
 	var indexer ind.Indexer
 	if params.DBParams != nil {
 		info := nodeinfo.Info{
 			GenesisBlock: blockChain.Genesis().Hash().Hex(),
-			NetworkID:    strconv.FormatUint(ethServ.NetVersion(), 10),
+			NetworkID:    strconv.FormatUint(cfg.NetworkId, 10),
 			ChainID:      blockChain.Config().ChainID.Uint64(),
 			ID:           params.DBParams.ID,
 			ClientName:   params.DBParams.ClientName,
