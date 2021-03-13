@@ -46,7 +46,6 @@ import (
 	"github.com/ethereum/go-ethereum/eth/downloader"
 	"github.com/ethereum/go-ethereum/eth/ethconfig"
 	"github.com/ethereum/go-ethereum/eth/gasprice"
-	"github.com/ethereum/go-ethereum/eth/tracers"
 	"github.com/ethereum/go-ethereum/ethdb"
 	"github.com/ethereum/go-ethereum/ethstats"
 	"github.com/ethereum/go-ethereum/graphql"
@@ -1735,8 +1734,8 @@ func RegisterGraphQLService(stack *node.Node, backend ethapi.Backend, cfg node.C
 }
 
 // RegisterStateDiffService configures and registers a service to stream state diff data over RPC
-func RegisterStateDiffService(stack *node.Node, ethServ *eth.Ethereum, params statediff.ServiceParams) {
-	if err := statediff.New(stack, ethServ, params); err != nil {
+func RegisterStateDiffService(stack *node.Node, ethServ *eth.Ethereum, cfg *ethconfig.Config, params statediff.ServiceParams) {
+	if err := statediff.New(stack, ethServ, cfg, params); err != nil {
 		Fatalf("Failed to register the Statediff service: %v", err)
 	}
 }

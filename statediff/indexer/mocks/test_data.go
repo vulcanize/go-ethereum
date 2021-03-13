@@ -31,9 +31,6 @@ import (
 	"github.com/ethereum/go-ethereum/log"
 	"github.com/ethereum/go-ethereum/params"
 	"github.com/ethereum/go-ethereum/rlp"
-	"github.com/multiformats/go-multihash"
-
-	"github.com/ethereum/go-ethereum/statediff/indexer/ipfs/ipld"
 	"github.com/ethereum/go-ethereum/statediff/testhelpers"
 	sdtypes "github.com/ethereum/go-ethereum/statediff/types"
 )
@@ -52,13 +49,11 @@ var (
 		Extra:       []byte{},
 	}
 	MockTransactions, MockReceipts, SenderAddr        = createTransactionsAndReceipts()
-	ReceiptsRlp, _                                    = rlp.EncodeToBytes(MockReceipts)
 	MockBlock                                         = types.NewBlock(&MockHeader, MockTransactions, nil, MockReceipts, new(trie.Trie))
 	MockHeaderRlp, _                                  = rlp.EncodeToBytes(MockBlock.Header())
 	Address                                           = common.HexToAddress("0xaE9BEa628c4Ce503DcFD7E305CaB4e29E7476592")
 	AnotherAddress                                    = common.HexToAddress("0xaE9BEa628c4Ce503DcFD7E305CaB4e29E7476593")
 	ContractAddress                                   = crypto.CreateAddress(SenderAddr, MockTransactions[2].Nonce())
-	ContractHash                                      = crypto.Keccak256Hash(ContractAddress.Bytes()).String()
 	MockContractByteCode                              = []byte{0, 1, 2, 3, 4, 5}
 	mockTopic11                                       = common.HexToHash("0x04")
 	mockTopic12                                       = common.HexToHash("0x06")
@@ -77,16 +72,6 @@ var (
 		Topics:  []common.Hash{mockTopic21, mockTopic22},
 		Data:    []byte{},
 	}
-	HeaderCID, _  = ipld.RawdataToCid(ipld.MEthHeader, MockHeaderRlp, multihash.KECCAK_256)
-	Trx1CID, _    = ipld.RawdataToCid(ipld.MEthTx, MockTransactions.GetRlp(0), multihash.KECCAK_256)
-	Trx2CID, _    = ipld.RawdataToCid(ipld.MEthTx, MockTransactions.GetRlp(1), multihash.KECCAK_256)
-	Trx3CID, _    = ipld.RawdataToCid(ipld.MEthTx, MockTransactions.GetRlp(2), multihash.KECCAK_256)
-	Rct1CID, _    = ipld.RawdataToCid(ipld.MEthTxReceipt, MockReceipts.GetRlp(0), multihash.KECCAK_256)
-	Rct2CID, _    = ipld.RawdataToCid(ipld.MEthTxReceipt, MockReceipts.GetRlp(1), multihash.KECCAK_256)
-	Rct3CID, _    = ipld.RawdataToCid(ipld.MEthTxReceipt, MockReceipts.GetRlp(2), multihash.KECCAK_256)
-	State1CID, _  = ipld.RawdataToCid(ipld.MEthStateTrie, ContractLeafNode, multihash.KECCAK_256)
-	State2CID, _  = ipld.RawdataToCid(ipld.MEthStateTrie, AccountLeafNode, multihash.KECCAK_256)
-	StorageCID, _ = ipld.RawdataToCid(ipld.MEthStorageTrie, StorageLeafNode, multihash.KECCAK_256)
 
 	// statediff data
 	storageLocation    = common.HexToHash("0")
@@ -193,5 +178,6 @@ func createTransactionsAndReceipts() (types.Transactions, types.Receipts, common
 	mockReceipt3 := types.NewReceipt(common.HexToHash("0x2").Bytes(), false, 75)
 	mockReceipt3.Logs = []*types.Log{}
 	mockReceipt3.TxHash = signedTrx3.Hash()
+
 	return types.Transactions{signedTrx1, signedTrx2, signedTrx3}, types.Receipts{mockReceipt1, mockReceipt2, mockReceipt3}, SenderAddr
 }
